@@ -1,0 +1,28 @@
+{
+  "name": "pi-dashboard",
+  "version": "3.0.0",
+  "description": "Self-hosted Raspberry Pi 5 command center with n8n automation hub",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "NODE_ENV=development node server.js",
+    "serve": "npx serve public -p 8080",
+    "pm2:start": "pm2 start server.js --name pi-dashboard",
+    "pm2:stop": "pm2 stop pi-dashboard",
+    "pm2:restart": "pm2 restart pi-dashboard",
+    "pm2:logs": "pm2 logs pi-dashboard",
+    "pm2:save": "pm2 save"
+  },
+  "keywords": ["raspberry-pi", "dashboard", "self-hosted", "n8n", "automation", "pi5", "monitoring"],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

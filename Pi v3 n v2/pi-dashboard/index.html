@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description"
+        content="Pi 5 Personal Dashboard – Real-time system stats, GitHub, Weather, Tasks & n8n Workflows" />
+    <meta name="theme-color" content="#080a0f" />
+    <title>Pi5 Dashboard | Personal Command Center</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+        rel="stylesheet" />
+
+    <!-- Favicon -->
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥧</text></svg>" />
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="css/widgets.css" />
+    <link rel="stylesheet" href="css/animations.css" />
+</head>
+
+<body>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-inner">
+            <div class="loading-logo">
+                <span class="material-symbols-outlined">developer_board</span>
+            </div>
+            <div class="loading-text">Pi5 Dashboard</div>
+            <div class="loading-sub">Connecting to system...</div>
+            <div class="loading-bar">
+                <div class="loading-bar-fill"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-overlay hidden">
+        <div class="modal-box" id="settings-box">
+            <div class="modal-header">
+                <h2><span class="material-symbols-outlined">settings</span> Dashboard Settings</h2>
+                <button class="modal-close" id="settings-close"><span
+                        class="material-symbols-outlined">close</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-section">
+                    <h3>🌦️ Weather</h3>
+                    <label>OpenWeatherMap API Key</label>
+                    <input type="text" id="cfg-weather-key" placeholder="your_openweather_api_key" />
+                    <label>Your City</label>
+                    <input type="text" id="cfg-city" placeholder="London" />
+                </div>
+                <div class="settings-section">
+                    <h3>🐙 GitHub</h3>
+                    <label>GitHub Username</label>
+                    <input type="text" id="cfg-github-user" placeholder="your-username" />
+                    <label>GitHub Personal Access Token (optional, for higher rate limits)</label>
+                    <input type="password" id="cfg-github-token" placeholder="github_pat_..." />
+                </div>
+                <div class="settings-section">
+                    <h3>🔄 n8n Integration</h3>
+                    <label>n8n Base URL</label>
+                    <input type="text" id="cfg-n8n-url" placeholder="http://localhost:5678" />
+                    <label>n8n API Key</label>
+                    <input type="password" id="cfg-n8n-key" placeholder="n8n_api_key_..." />
+                </div>
+                <div class="settings-section">
+                    <h3>🖥️ Pi System API</h3>
+                    <label>Pi System Stats URL (leave blank for mock data)</label>
+                    <input type="text" id="cfg-pi-url" placeholder="http://localhost:3001/api/stats" />
+                    <label>Your Name / Pi Name</label>
+                    <input type="text" id="cfg-pi-name" placeholder="raspberrypi-node-05" />
+                </div>
+                <div class="settings-section">
+                    <h3>📝 Tasks</h3>
+                    <label>Notion Integration Token (optional)</label>
+                    <input type="text" id="cfg-notion-token" placeholder="secret_notion_token" />
+                    <label>Notion Database ID (optional)</label>
+                    <input type="text" id="cfg-notion-db" placeholder="database_id_here" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="settings-reset">Reset to Defaults</button>
+                <button class="btn-primary" id="settings-save">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- n8n Workflow Modal -->
+    <div id="n8n-modal" class="modal-overlay hidden">
+        <div class="modal-box modal-wide" id="n8n-box">
+            <div class="modal-header">
+                <h2><span class="material-symbols-outlined">account_tree</span> n8n Workflow Manager</h2>
+                <button class="modal-close" id="n8n-close"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <div class="modal-body" id="n8n-modal-body">
+                <!-- Rendered by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Task Modal -->
+    <div id="task-modal" class="modal-overlay hidden">
+        <div class="modal-box modal-small" id="task-box">
+            <div class="modal-header">
+                <h2><span class="material-symbols-outlined">add_task</span> Add New Task</h2>
+                <button class="modal-close" id="task-close"><span
+                        class="material-symbols-outlined">close</span></button>
+            </div>
+            <div class="modal-body">
+                <label>Task Title</label>
+                <input type="text" id="new-task-title" placeholder="Enter task..." />
+                <label>Priority</label>
+                <select id="new-task-priority">
+                    <option value="high">🔴 High</option>
+                    <option value="medium" selected>🟡 Medium</option>
+                    <option value="low">🟢 Low</option>
+                </select>
+                <label>Category</label>
+                <input type="text" id="new-task-category" placeholder="Development, System, etc." />
+                <label>Due Time (optional)</label>
+                <input type="time" id="new-task-time" />
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="task-cancel">Cancel</button>
+                <button class="btn-primary" id="task-add-btn">Add Task</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app" class="hidden">
+
+        <!-- HEADER -->
+        <header class="top-nav">
+            <div class="nav-inner">
+
+                <div class="nav-brand">
+                    <div class="nav-logo">
+                        <span class="material-symbols-outlined">developer_board</span>
+                    </div>
+                    <div class="nav-info">
+                        <h1 id="pi-hostname">raspberrypi-node-05</h1>
+                        <div class="nav-status">
+                            <span class="status-dot pulse"></span>
+                            <span id="uptime-display">System Online • Loading uptime...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <nav class="nav-links">
+                    <a href="#" class="nav-link active" data-section="dashboard">
+                        <span class="material-symbols-outlined">dashboard</span>Dashboard
+                    </a>
+                    <a href="#" class="nav-link" data-section="system">
+                        <span class="material-symbols-outlined">memory</span>System
+                    </a>
+                    <a href="#" class="nav-link" data-section="network">
+                        <span class="material-symbols-outlined">router</span>Network
+                    </a>
+                    <a href="#" class="nav-link" data-section="n8n" id="open-n8n">
+                        <span class="material-symbols-outlined">account_tree</span>n8n
+                    </a>
+                    <a href="#" class="nav-link" data-section="logs">
+                        <span class="material-symbols-outlined">receipt_long</span>Logs
+                    </a>
+                </nav>
+
+                <div class="nav-actions">
+                    <div class="nav-search">
+                        <span class="material-symbols-outlined">search</span>
+                        <input type="text" placeholder="Search widgets..." id="widget-search" />
+                    </div>
+                    <button class="nav-btn" id="refresh-all" title="Refresh all data">
+                        <span class="material-symbols-outlined" id="refresh-icon">refresh</span>
+                    </button>
+                    <button class="nav-btn" id="open-settings" title="Settings">
+                        <span class="material-symbols-outlined">settings</span>
+                    </button>
+                    <div class="nav-time" id="nav-clock">00:00</div>
+                    <div class="nav-avatar">
+                        <div class="avatar-inner">
+                            <span class="material-symbols-outlined">person</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT -->
+        <main class="dashboard-main">
+
+            <!-- STATS BAR -->
+            <div class="stats-bar">
+                <div class="stat-pill">
+                    <span class="material-symbols-outlined">device_thermostat</span>
+                    <span id="pill-temp">42°C</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="material-symbols-outlined">memory</span>
+                    <span id="pill-cpu">CPU: 24%</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="material-symbols-outlined">dns</span>
+                    <span id="pill-ram">RAM: 4.2GB</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="material-symbols-outlined">download</span>
+                    <span id="pill-net-down">↓ 0 MB/s</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="material-symbols-outlined">upload</span>
+                    <span id="pill-net-up">↑ 0 MB/s</span>
+                </div>
+                <div class="stat-pill" id="pill-ip">
+                    <span class="material-symbols-outlined">lan</span>
+                    <span>192.168.1.104</span>
+                </div>
+            </div>
+
+            <!-- BENTO GRID -->
+            <div class="bento-grid" id="bento-grid">
+
+                <!-- 1. Clock Widget -->
+                <div class="widget widget-clock" id="widget-clock">
+                    <div class="widget-glow"></div>
+                    <p class="widget-label">Local Time</p>
+                    <div class="clock-display" id="clock-display">
+                        <span class="clock-hours" id="clock-h">00</span>
+                        <span class="clock-colon">:</span>
+                        <span class="clock-minutes" id="clock-m">00</span>
+                    </div>
+                    <p class="clock-seconds" id="clock-s">:00</p>
+                    <p class="clock-date" id="clock-date">Loading...</p>
+                    <div class="clock-timezone" id="clock-tz">UTC</div>
+                </div>
+
+                <!-- 2. Weather Widget -->
+                <div class="widget widget-weather" id="widget-weather">
+                    <div class="widget-glow" style="--glow-color: rgba(251,191,36,0.2)"></div>
+                    <div class="weather-header">
+                        <div>
+                            <div class="weather-temp" id="weather-temp">--°C</div>
+                            <div class="weather-desc" id="weather-desc">Loading...</div>
+                            <div class="weather-loc" id="weather-loc">
+                                <span class="material-symbols-outlined">location_on</span>
+                                <span id="weather-city">Connecting...</span>
+                            </div>
+                        </div>
+                        <div class="weather-icon" id="weather-icon">🌤️</div>
+                    </div>
+                    <div class="weather-details">
+                        <div class="weather-detail">
+                            <span class="material-symbols-outlined">water_drop</span>
+                            <span id="weather-humidity">--%</span>
+                        </div>
+                        <div class="weather-detail">
+                            <span class="material-symbols-outlined">air</span>
+                            <span id="weather-wind">-- km/h</span>
+                        </div>
+                        <div class="weather-detail">
+                            <span class="material-symbols-outlined">visibility</span>
+                            <span id="weather-feels">--°C</span>
+                        </div>
+                    </div>
+                    <div class="weather-forecast" id="weather-forecast">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- 3. System Vitals Widget (WIDE) -->
+                <div class="widget widget-system wide-2 tall-2" id="widget-system">
+                    <div class="widget-glow" style="--glow-color: rgba(13,89,242,0.15)"></div>
+                    <div class="widget-header">
+                        <div class="widget-title">
+                            <span class="material-symbols-outlined">memory</span>
+                            Live System Vitals
+                        </div>
+                        <div class="status-badge" id="system-status-badge">
+                            <span class="status-dot pulse green"></span>
+                            <span id="system-status-text">Normal Load</span>
+                        </div>
+                    </div>
+
+                    <div class="gauges-grid">
+                        <!-- CPU Gauge -->
+                        <div class="gauge-item">
+                            <div class="gauge-wrap">
+                                <svg class="gauge-svg" viewBox="0 0 120 120">
+                                    <circle class="gauge-track" cx="60" cy="60" r="50" />
+                                    <circle class="gauge-fill" id="cpu-circle" cx="60" cy="60" r="50"
+                                        stroke-dasharray="0 314" stroke-dashoffset="78.5" />
+                                    <text class="gauge-val" id="cpu-val" x="60" y="55" text-anchor="middle">0%</text>
+                                    <text class="gauge-name" x="60" y="72" text-anchor="middle">CPU</text>
+                                </svg>
+                            </div>
+                            <div class="gauge-sub">
+                                <span id="cpu-cores">4 Cores</span>
+                                <span class="gauge-freq" id="cpu-freq">1.8 GHz</span>
+                            </div>
+                        </div>
+
+                        <!-- RAM Gauge -->
+                        <div class="gauge-item">
+                            <div class="gauge-wrap">
+                                <svg class="gauge-svg" viewBox="0 0 120 120">
+                                    <circle class="gauge-track" cx="60" cy="60" r="50" />
+                                    <circle class="gauge-fill gauge-fill-purple" id="ram-circle" cx="60" cy="60" r="50"
+                                        stroke-dasharray="0 314" stroke-dashoffset="78.5" />
+                                    <text class="gauge-val" id="ram-val" x="60" y="55" text-anchor="middle">0 GB</text>
+                                    <text class="gauge-name" x="60" y="72" text-anchor="middle">RAM</text>
+                                </svg>
+                            </div>
+                            <div class="gauge-sub">
+                                <span id="ram-total">8GB DDR4</span>
+                                <span class="gauge-freq" id="ram-pct">0%</span>
+                            </div>
+                        </div>
+
+                        <!-- Temperature Gauge -->
+                        <div class="gauge-item">
+                            <div class="gauge-wrap">
+                                <svg class="gauge-svg" viewBox="0 0 120 120">
+                                    <circle class="gauge-track" cx="60" cy="60" r="50" />
+                                    <circle class="gauge-fill gauge-fill-green" id="temp-circle" cx="60" cy="60" r="50"
+                                        stroke-dasharray="0 314" stroke-dashoffset="78.5" />
+                                    <text class="gauge-val" id="temp-val" x="60" y="55" text-anchor="middle">0°C</text>
+                                    <text class="gauge-name" x="60" y="72" text-anchor="middle">TEMP</text>
+                                </svg>
+                            </div>
+                            <div class="gauge-sub">
+                                <span id="temp-status">Optimal</span>
+                                <span class="gauge-freq" id="fan-speed">Fan: --rpm</span>
+                            </div>
+                        </div>
+
+                        <!-- Disk Gauge -->
+                        <div class="gauge-item">
+                            <div class="gauge-wrap">
+                                <svg class="gauge-svg" viewBox="0 0 120 120">
+                                    <circle class="gauge-track" cx="60" cy="60" r="50" />
+                                    <circle class="gauge-fill gauge-fill-orange" id="disk-circle" cx="60" cy="60" r="50"
+                                        stroke-dasharray="0 314" stroke-dashoffset="78.5" />
+                                    <text class="gauge-val" id="disk-val" x="60" y="55" text-anchor="middle">0 GB</text>
+                                    <text class="gauge-name" x="60" y="72" text-anchor="middle">DISK</text>
+                                </svg>
+                            </div>
+                            <div class="gauge-sub">
+                                <span id="disk-total">--GB Total</span>
+                                <span class="gauge-freq" id="disk-pct">0%</span>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Network Speed Row -->
+                    <div class="system-bottom">
+                        <div class="net-stat">
+                            <div class="net-stat-icon download">
+                                <span class="material-symbols-outlined">download</span>
+                            </div>
+                            <div>
+                                <div class="net-stat-label">Download</div>
+                                <div class="net-stat-val" id="net-down">-- MB/s</div>
+                            </div>
+                        </div>
+                        <div class="net-chart-wrap">
+                            <canvas id="net-chart" width="200" height="60"></canvas>
+                        </div>
+                        <div class="net-stat">
+                            <div class="net-stat-icon upload">
+                                <span class="material-symbols-outlined">upload</span>
+                            </div>
+                            <div>
+                                <div class="net-stat-label">Upload</div>
+                                <div class="net-stat-val" id="net-up">-- MB/s</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. GitHub Stats Widget -->
+                <div class="widget widget-github wide-2" id="widget-github">
+                    <div class="widget-glow" style="--glow-color: rgba(57,255,20,0.1)"></div>
+                    <div class="widget-header">
+                        <div class="widget-title">
+                            <svg class="github-logo" viewBox="0 0 24 24">
+                                <path
+                                    d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+                            </svg>
+                            GitHub Stats
+                        </div>
+                        <div class="github-meta">
+                            <div class="github-stat-pill">
+                                <span class="material-symbols-outlined">star</span>
+                                <span id="gh-stars">--</span>
+                            </div>
+                            <div class="github-stat-pill">
+                                <span class="material-symbols-outlined">group</span>
+                                <span id="gh-followers">--</span>
+                            </div>
+                            <div class="github-stat-pill">
+                                <span class="material-symbols-outlined">fork_right</span>
+                                <span id="gh-repos">-- repos</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="github-body">
+                        <div class="github-user-info">
+                            <img id="gh-avatar" src="" alt="GitHub Avatar" class="gh-avatar" />
+                            <div>
+                                <div class="gh-name" id="gh-name">Loading...</div>
+                                <div class="gh-bio" id="gh-bio">Fetching GitHub profile...</div>
+                            </div>
+                        </div>
+                        <div class="contribution-graph" id="contribution-graph">
+                            <!-- Populated by JS -->
+                            <div class="contrib-loading">Loading contributions...</div>
+                        </div>
+                        <div class="contrib-legend">
+                            <span>Less</span>
+                            <div class="contrib-sq" style="opacity:.15"></div>
+                            <div class="contrib-sq" style="opacity:.35"></div>
+                            <div class="contrib-sq" style="opacity:.6"></div>
+                            <div class="contrib-sq" style="opacity:.8"></div>
+                            <div class="contrib-sq" style="opacity:1"></div>
+                            <span>More</span>
+                            <span class="contrib-total" id="contrib-total">-- contributions</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Recent Commits Widget -->
+                <div class="widget widget-commits" id="widget-commits">
+                    <div class="widget-glow" style="--glow-color: rgba(139,92,246,0.15)"></div>
+                    <div class="widget-header">
+                        <div class="widget-title">
+                            <span class="material-symbols-outlined">history</span>
+                            Recent Commits
+                        </div>
+                        <button class="widget-btn" id="view-github-btn">
+                            <span class="material-symbols-outlined">open_in_new</span>
+                        </button>
+                    </div>
+                    <div class="commits-list" id="commits-list">
+                        <div class="loading-placeholder">
+                            <div class="shimmer"></div>
+                            <div class="shimmer short"></div>
+                            <div class="shimmer"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. Tasks / Agenda Widget -->
+                <div class="widget widget-tasks tall-2" id="widget-tasks">
+                    <div class="widget-glow" style="--glow-color: rgba(16,185,129,0.1)"></div>
+                    <div class="widget-header">
+                        <div class="widget-title">
+                            <span class="material-symbols-outlined">assignment</span>
+                            Today's Agenda
+                        </div>
+                        <button class="widget-btn" id="add-task-btn" title="Add task">
+                            <span class="material-symbols-outlined">add</span>
+                        </button>
+                    </div>
+                    <div class="tasks-list" id="tasks-list">
+                        <!-- Populated by JS -->
+                    </div>
+                    <div class="tasks-footer">
+                        <div class="tasks-progress-bar">
+                            <div class="tasks-progress-fill" id="tasks-progress-fill"></div>
+                        </div>
+                        <div class="tasks-summary" id="tasks-summary">Loading tasks...</div>
+                    </div>
+                </div>
+
+                <!-- 7. Network Overview Widget -->
+                <div class="widget widget-network wide-2" id="widget-network">
+                    <div class="widget-glow" style="--glow-color: rgba(6,182,212,0.1)"></div>
+                    <div class="widget-header">
+                        <div class="widget-title">
+                            <span class="material-symbols-outlined">router</span>
+                            Network Overview
+                        </div>
+                        <span class="mono-tag" id="local-ip">192.168.1.104</span>
+                    </div>
+                    <div class="network-body">
+                        <div class="network-services" id="network-services">
+                            <!-- Populated by JS -->
+                        </div>
+                        <div class="network-right">
+                            <div class="net-ring-wrap">
+                                <canvas id="ping-chart" width="120" height="60"></canvas>
+                                <div class="ping-label">
+                                    <span class="material-symbols-outlined">timeline</span>
+                                    <span id="ping-val">-- ms</span>
+                                </div>
+                            </div>
+                            <div class="net-info-grid">
+                                <div class="net-info-item">
+                                    <span class="net-info-label">Gateway</span>
+                                    <span class="net-info-val" id="net-gateway">192.168.1.1</span>
+                                </div>
+                                <div class="net-info-item">
+                                    <span class="net-info-label">DNS</span>
+                                    <span class="net-info-val" id="net-dns">1.1.1.1</span>
+                                </div>
+                                <div class="net-info-item">
+                                    <span class="net-info-label">Type</span>
+                                    <span class="net-info-val" id="net-type">Wi-Fi 6E</span>
+                                </div>
+                                <div class="net-info-item">
+                                    <span class="net-info-label">Security</span>
+                                    <span class="net-info-val" id="net-security">WPA3</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 8. n8n Workflows Widget -->
+                <div class="widget widget-n8n" id="widget-n8n">
+                    <div class="widget-glow" style="--glow-color: rgba(249,115,22,0.15)"></div>
+                    <div class="widget-header">
+                        <div class="widget-title">
+                            <span class="material-symbols-outlined">account_tree</span>
+                            n8n Workflows
+                        </div>
+                        <button class="widget-btn" id="open-n8n-modal">
+                            <span class="material-symbols-outlined">open_in_new</span>
+                        </button>
+                    </div>
+                    <div class="n8n-status">
+                        <div class="n8n-online-indicator" id="n8n-indicator">
+                            <span class="status-dot" id="n8n-dot"></span>
+                            <span id="n8n-status-text">Connecting...</span>
+                        </div>
+                    </div>
+                    <div class="n8n-workflows-list" id="n8n-workflows-mini">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- 9. Docker Containers Widget -->
+                <div class="widget widget-docker" id="widget-docker">
+                    <div class="widget-glow" style="--glow-color: rgba(56,189,248,0.1)"></div>
+                    <div class="widget-header">
+                        <div class="widget-title">
+                            <span class="material-symbols-outlined">deployed_code</span>
+                            Services
+                        </div>
+                        <div class="docker-count" id="docker-count">-- running</div>
+                    </div>
+                    <div class="docker-list" id="docker-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- 10. Activity Log Widget -->
+                <div class="widget widget-log wide-2" id="widget-log">
+                    <div class="widget-glow"></div>
+                    <div class="widget-header">
+                        <div class="widget-title">
+                            <span class="material-symbols-outlined">receipt_long</span>
+                            System Log
+                        </div>
+                        <button class="widget-btn" id="clear-log">
+                            <span class="material-symbols-outlined">delete_sweep</span>
+                        </button>
+                    </div>
+                    <div class="log-body" id="log-body">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+            </div>
+        </main>
+
+        <!-- FOOTER -->
+        <footer class="dashboard-footer">
+            <div class="footer-inner">
+                <span>Pi5 Dashboard v2.0 — Open Source</span>
+                <span>Last updated: <span id="last-updated">--</span></span>
+                <a href="https://github.com" target="_blank" class="footer-link">
+                    <span class="material-symbols-outlined">open_in_new</span> View on GitHub
+                </a>
+            </div>
+        </footer>
+
+    </div><!-- /app -->
+
+    <!-- Background Blobs -->
+    <div class="bg-blobs" aria-hidden="true">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <!-- Scripts (Module order matters) -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/widgets/clock.js"></script>
+    <script src="js/widgets/weather.js"></script>
+    <script src="js/widgets/system.js"></script>
+    <script src="js/widgets/github.js"></script>
+    <script src="js/widgets/tasks.js"></script>
+    <script src="js/widgets/network.js"></script>
+    <script src="js/widgets/n8n.js"></script>
+    <script src="js/widgets/docker.js"></script>
+    <script src="js/widgets/log.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>

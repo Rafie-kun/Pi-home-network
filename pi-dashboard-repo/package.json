@@ -1,0 +1,45 @@
+{
+  "name": "pi-dashboard",
+  "version": "2.0.0",
+  "description": "Self-hosted personal dashboard for Raspberry Pi 5 with n8n automation hub",
+  "private": true,
+  "keywords": [
+    "raspberry-pi",
+    "dashboard",
+    "self-hosted",
+    "n8n",
+    "automation",
+    "system-monitor",
+    "github-stats",
+    "portfolio"
+  ],
+  "author": "Your Name <you@example.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/YOUR_USERNAME/pi-dashboard",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YOUR_USERNAME/pi-dashboard.git"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "serve": "npx serve public -p 8080",
+    "dev": "NODE_ENV=development node server.js",
+    "build": "react-scripts build",
+    "react-start": "react-scripts start",
+    "pm2:start": "pm2 start server.js --name pi-dashboard",
+    "pm2:stop": "pm2 stop pi-dashboard",
+    "pm2:logs": "pm2 logs pi-dashboard"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "serve": "^14.2.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

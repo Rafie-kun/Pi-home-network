@@ -1,0 +1,2181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pi5 Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Syne:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#030609;--bg1:#060d18;--bg2:#0a1525;
+  --glass:rgba(255,255,255,0.028);--glass2:rgba(255,255,255,0.05);
+  --border:rgba(255,255,255,0.065);--border-hi:rgba(64,176,255,0.3);
+  --blue:#40b0ff;--blue2:#1a7fff;--blue-d:rgba(64,176,255,0.1);
+  --green:#1deb8a;--green-d:rgba(29,235,138,0.1);
+  --orange:#ff8533;--orange-d:rgba(255,133,51,0.1);
+  --red:#ff3d5a;--red-d:rgba(255,61,90,0.1);
+  --yellow:#ffc840;--yellow-d:rgba(255,200,64,0.1);
+  --purple:#b57bff;--purple-d:rgba(181,123,255,0.1);
+  --cyan:#00d4ff;--cyan-d:rgba(0,212,255,0.1);
+  --text:#ddeeff;--text-mid:#6e96bb;--text-dim:#2d4a66;
+  --mono:'JetBrains Mono',monospace;--sans:'Syne',sans-serif;
+  --r:12px;--rs:7px;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px}
+
+/* ── AMBIENT ── */
+.ambient{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.amb{position:absolute;border-radius:50%;filter:blur(120px);animation:ambFloat 20s ease-in-out infinite}
+.amb1{width:700px;height:700px;top:-200px;right:-150px;background:var(--blue);opacity:.07;animation-delay:0s}
+.amb2{width:600px;height:600px;bottom:-150px;left:-100px;background:#0d2a6e;opacity:.12;animation-delay:-7s}
+.amb3{width:400px;height:400px;top:30%;left:30%;background:var(--green);opacity:.05;animation-delay:-14s}
+@keyframes ambFloat{0%,100%{transform:translate(0,0)}33%{transform:translate(30px,-20px)}66%{transform:translate(-20px,30px)}}
+
+/* Scanlines */
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);pointer-events:none;z-index:9999}
+
+/* ── SHELL ── */
+.shell{position:relative;z-index:2;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── HEADER ── */
+header{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 20px;
+  background:rgba(3,6,9,0.9);
+  border-bottom:1px solid var(--border);
+  backdrop-filter:blur(24px);
+  flex-shrink:0;z-index:100;
+}
+.logo{
+  width:34px;height:34px;border-radius:9px;
+  background:linear-gradient(135deg,var(--blue2),var(--blue));
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;box-shadow:0 0 18px rgba(64,176,255,.35);flex-shrink:0;
+}
+.hdr-info{flex:1;min-width:0}
+.hdr-host{font-size:12px;font-weight:700;font-family:var(--sans);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr-status{display:flex;align-items:center;gap:5px;margin-top:1px}
+.live-dot{width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s ease-in-out infinite;flex-shrink:0}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.hdr-status span{font-size:9px;font-family:var(--mono);color:var(--text-mid);letter-spacing:.05em;white-space:nowrap}
+
+.nav-tabs{display:flex;align-items:center;gap:2px;background:var(--glass);border:1px solid var(--border);border-radius:8px;padding:2px}
+.nav-tab{
+  padding:5px 13px;border-radius:6px;font-size:10px;font-weight:700;
+  color:var(--text-dim);cursor:pointer;transition:all .2s;
+  letter-spacing:.04em;text-transform:uppercase;font-family:var(--mono);
+  border:none;background:none;white-space:nowrap;
+}
+.nav-tab.active{background:var(--blue-d);color:var(--blue);border:1px solid rgba(64,176,255,.2);box-shadow:0 0 12px rgba(64,176,255,.1)}
+.nav-tab:hover:not(.active){color:var(--text-mid);background:rgba(255,255,255,.03)}
+
+.hdr-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.hdr-btn{
+  display:flex;align-items:center;gap:5px;padding:5px 10px;
+  border-radius:6px;border:1px solid var(--border);background:var(--glass);
+  color:var(--text-mid);font-size:10px;font-family:var(--mono);
+  cursor:pointer;transition:all .2s;letter-spacing:.04em;white-space:nowrap;
+}
+.hdr-btn:hover{border-color:var(--border-hi);color:var(--text);background:var(--glass2)}
+.hdr-clock{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text);letter-spacing:-1px;min-width:64px;text-align:right}
+
+/* ── MAIN AREA ── */
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.page{display:none;height:100%;overflow-y:auto;overflow-x:hidden}
+.page.active{display:flex;flex-direction:column}
+.page::-webkit-scrollbar{width:3px}
+.page::-webkit-scrollbar-track{background:transparent}
+.page::-webkit-scrollbar-thumb{background:var(--border-hi);border-radius:2px}
+
+/* ── CARD ── */
+.card{
+  background:var(--glass);border:1px solid var(--border);
+  border-radius:var(--r);padding:14px;position:relative;overflow:hidden;
+  backdrop-filter:blur(12px);transition:border-color .2s,box-shadow .2s,background .2s;
+}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(64,176,255,.3),transparent);opacity:0;transition:opacity .2s}
+.card:hover{border-color:var(--border-hi);background:var(--glass2);box-shadow:0 0 24px rgba(64,176,255,.07)}
+.card:hover::before{opacity:1}
+.card-title{font-size:9px;font-family:var(--mono);letter-spacing:.14em;color:var(--text-dim);text-transform:uppercase;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:4px;font-size:8px;font-family:var(--mono);font-weight:700;letter-spacing:.06em}
+.badge-blue{background:var(--blue-d);color:var(--blue);border:1px solid rgba(64,176,255,.2)}
+.badge-green{background:var(--green-d);color:var(--green);border:1px solid rgba(29,235,138,.2)}
+.badge-orange{background:var(--orange-d);color:var(--orange);border:1px solid rgba(255,133,51,.2)}
+.badge-red{background:var(--red-d);color:var(--red);border:1px solid rgba(255,61,90,.2)}
+.badge-purple{background:var(--purple-d);color:var(--purple);border:1px solid rgba(181,123,255,.2)}
+.badge-yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid rgba(255,200,64,.2)}
+.badge-cyan{background:var(--cyan-d);color:var(--cyan);border:1px solid rgba(0,212,255,.2)}
+
+/* ── DASHBOARD PAGE ── */
+#page-dash{padding:14px}
+.dash-grid{
+  display:grid;
+  grid-template-columns:190px 190px 1fr 1fr 200px;
+  grid-template-rows:176px 176px 162px;
+  gap:10px;
+}
+
+/* Clock */
+.c-clock{grid-column:1;grid-row:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
+.clock-big{font-family:var(--mono);font-size:36px;font-weight:700;line-height:1;color:var(--text);text-shadow:0 0 30px rgba(64,176,255,.3);letter-spacing:-2px}
+.clock-colon{animation:colon 1s step-end infinite}
+@keyframes colon{0%,100%{opacity:1}50%{opacity:.1}}
+.clock-sec{font-size:22px;font-weight:400;color:var(--text-mid)}
+.clock-date{font-size:10px;color:var(--text-mid);margin-top:7px;font-weight:600;letter-spacing:.02em}
+.clock-tz{font-size:8px;font-family:var(--mono);color:var(--text-dim);margin-top:3px;letter-spacing:.07em}
+
+/* Weather */
+.c-weather{grid-column:2;grid-row:1}
+.wtop{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.wtemp{font-size:42px;font-weight:900;line-height:1;letter-spacing:-2px;color:var(--text)}
+.wtemp sup{font-size:16px;font-weight:400;color:var(--text-mid);vertical-align:super}
+.wdesc{font-size:10px;color:var(--text-mid);margin-top:3px;font-weight:600}
+.wloc{font-size:9px;color:var(--blue);font-family:var(--mono);margin-top:2px}
+.wicon{font-size:40px;line-height:1;filter:drop-shadow(0 0 10px rgba(255,200,50,.4))}
+.wforecast{display:flex;gap:5px}
+.wday{flex:1;background:rgba(255,255,255,.025);border:1px solid var(--border);border-radius:var(--rs);padding:6px 4px;text-align:center}
+.wdname{font-size:7px;font-family:var(--mono);color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase}
+.wdicon{font-size:13px;margin:3px 0}
+.wdtemp{font-size:11px;font-weight:700}
+
+/* Vitals (2×2) */
+.c-vitals{grid-column:3/5;grid-row:1/3;display:flex;flex-direction:column}
+.vitals-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.vitals-title{font-size:12px;font-weight:800;display:flex;align-items:center;gap:7px}
+.gauges{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;flex:1;align-items:center}
+.gauge-w{display:flex;flex-direction:column;align-items:center;gap:6px}
+.gauge-c{position:relative}
+.gauge-svg{transform:rotate(-90deg)}
+.gauge-track{fill:none;stroke:rgba(255,255,255,.04)}
+.gauge-arc{fill:none;stroke-linecap:round;transition:stroke-dasharray 1s cubic-bezier(.4,0,.2,1)}
+.gauge-label-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.gauge-val{font-size:17px;font-weight:800;font-family:var(--mono);line-height:1}
+.gauge-unit{font-size:7px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;margin-top:1px;font-family:var(--mono)}
+.gauge-name{font-size:9px;color:var(--text-mid);font-weight:600}
+.gauge-sub{font-size:8px;color:var(--text-dim);font-family:var(--mono)}
+.vdiv{height:1px;background:var(--border);margin:10px 0}
+.vbot{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.vstat{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:var(--rs);padding:9px 10px}
+.vstat-l{font-size:7px;font-family:var(--mono);color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase}
+.vstat-v{font-size:14px;font-weight:800;margin-top:2px;font-family:var(--mono)}
+.vstat-s{font-size:8px;color:var(--text-dim);margin-top:1px;font-family:var(--mono)}
+.pbar{height:2px;background:rgba(255,255,255,.04);border-radius:1px;margin-top:4px;overflow:hidden}
+.pfill{height:100%;border-radius:1px;transition:width .8s ease}
+.pf-b{background:linear-gradient(90deg,var(--blue2),var(--blue))}
+.pf-g{background:linear-gradient(90deg,#0fa06a,var(--green))}
+.pf-o{background:linear-gradient(90deg,#cc5500,var(--orange))}
+
+/* GitHub */
+.c-github{grid-column:5;grid-row:1/3;display:flex;flex-direction:column}
+.gh-profile{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.gh-ava{
+  width:36px;height:36px;border-radius:50%;
+  border:1.5px solid var(--border-hi);
+  background:linear-gradient(135deg,#1e3a6e,var(--blue));
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:800;flex-shrink:0;
+  box-shadow:0 0 14px rgba(64,176,255,.22);
+}
+.gh-name{font-size:12px;font-weight:800}
+.gh-user{font-size:9px;font-family:var(--mono);color:var(--blue);margin-top:1px}
+.gh-nums{display:flex;gap:5px;margin-bottom:10px}
+.gh-num{flex:1;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:var(--rs);padding:7px;text-align:center}
+.gh-nv{font-size:14px;font-weight:800;color:var(--green);font-family:var(--mono)}
+.gh-nl{font-size:7px;color:var(--text-dim);font-family:var(--mono);letter-spacing:.07em;text-transform:uppercase;margin-top:1px}
+.contrib-wrap{flex:1;overflow:hidden}
+.contrib-grid{display:grid;grid-template-rows:repeat(7,1fr);grid-auto-flow:column;gap:2px;height:100%}
+.cc{border-radius:2px;aspect-ratio:1;cursor:default;transition:filter .15s}
+.cc:hover{filter:brightness(1.5)}
+.cc0{background:rgba(255,255,255,.035)}
+.cc1{background:rgba(29,235,138,.18)}
+.cc2{background:rgba(29,235,138,.42)}
+.cc3{background:rgba(29,235,138,.68)}
+.cc4{background:rgba(29,235,138,.93);box-shadow:0 0 3px rgba(29,235,138,.3)}
+.gh-total{font-size:11px;font-weight:700;color:var(--green);font-family:var(--mono)}
+
+/* Commits */
+.c-commits{grid-column:1/3;grid-row:2;display:flex;flex-direction:column}
+.commit-list{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.ci{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.ci:last-child{border-bottom:none;padding-bottom:0}
+.ci:hover .ci-msg{color:var(--blue)}
+.ci-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px;box-shadow:0 0 5px currentColor}
+.ci-body{flex:1;min-width:0}
+.ci-top{display:flex;align-items:center;gap:5px;margin-bottom:1px}
+.ci-repo{font-size:7px;font-family:var(--mono);letter-spacing:.1em;padding:1px 5px;border-radius:3px;font-weight:700;text-transform:uppercase}
+.ci-time{font-size:8px;color:var(--text-dim);font-family:var(--mono);margin-left:auto}
+.ci-msg{font-size:10px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .15s}
+.ci-sha{font-size:8px;font-family:var(--mono);color:var(--text-dim);margin-top:1px}
+.btn-ghost{width:100%;padding:7px;border-radius:var(--rs);border:1px solid var(--border);background:none;color:var(--text-mid);font-size:9px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .2s;margin-top:8px}
+.btn-ghost:hover{border-color:var(--border-hi);color:var(--text);background:var(--blue-d)}
+
+/* Tasks */
+.c-tasks{grid-column:5;grid-row:3;display:flex;flex-direction:column}
+.task-list{display:flex;flex-direction:column;gap:4px;flex:1}
+.ti{display:flex;align-items:flex-start;gap:8px;padding:7px 9px;border-radius:var(--rs);border:1px solid var(--border);background:rgba(255,255,255,.015);cursor:pointer;transition:all .18s}
+.ti:hover{border-color:var(--border-hi);background:var(--blue-d)}
+.ti.done{opacity:.4}
+.ti-cb{width:13px;height:13px;border-radius:3px;border:1.5px solid var(--border-hi);background:none;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all .18s}
+.ti.done .ti-cb{background:var(--blue);border-color:var(--blue)}
+.ti-chk{color:#fff;font-size:8px;display:none}
+.ti.done .ti-chk{display:block}
+.ti-text{font-size:10px;font-weight:600;flex:1;min-width:0;line-height:1.3}
+.ti.done .ti-text{text-decoration:line-through}
+.ti-meta{font-size:8px;font-family:var(--mono);color:var(--text-dim);margin-top:1px}
+.ti-pri{font-size:7px;font-family:var(--mono);padding:1px 5px;border-radius:3px;flex-shrink:0;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-top:1px}
+
+/* Network */
+.c-network{grid-column:3/5;grid-row:3}
+.net-inner{display:flex;align-items:center;gap:14px;height:calc(100% - 24px)}
+.net-stats{display:grid;grid-template-columns:1fr 1fr;gap:7px;flex:1}
+.ns{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:var(--rs);padding:9px 11px}
+.ns-l{font-size:7px;font-family:var(--mono);color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase}
+.ns-v{font-size:16px;font-weight:800;margin-top:2px;font-family:var(--mono)}
+.ns-s{font-size:8px;color:var(--text-dim);margin-top:1px;font-family:var(--mono)}
+.net-div{width:1px;background:var(--border);align-self:stretch;flex-shrink:0}
+.net-right{display:flex;flex-direction:column;gap:5px;min-width:155px}
+.net-ip{font-family:var(--mono);font-size:11px;color:var(--blue);background:var(--blue-d);padding:4px 9px;border-radius:4px;border:1px solid rgba(64,176,255,.2)}
+.net-row{font-size:8px;font-family:var(--mono);color:var(--text-dim)}
+.net-row b{color:var(--green)}
+.sparkline{width:100%;height:36px;display:block;margin-bottom:4px}
+
+/* ─────────────────── N8N PAGE ─────────────────── */
+#page-n8n{padding:14px}
+.n8n-layout{display:grid;grid-template-columns:260px 1fr;gap:12px;height:calc(100vh - 120px)}
+
+/* Sidebar */
+.n8n-sidebar{display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+.n8n-sidebar::-webkit-scrollbar{width:2px}
+.n8n-sidebar::-webkit-scrollbar-thumb{background:var(--border-hi)}
+
+.n8n-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.n8n-stat{background:var(--glass);border:1px solid var(--border);border-radius:var(--r);padding:12px}
+.n8n-stat-l{font-size:8px;font-family:var(--mono);color:var(--text-dim);letter-spacing:.12em;text-transform:uppercase}
+.n8n-stat-v{font-size:24px;font-weight:900;margin-top:3px;line-height:1}
+.n8n-stat-s{font-size:8px;color:var(--text-dim);margin-top:2px;font-family:var(--mono)}
+
+.n8n-quick-title{font-size:9px;font-family:var(--mono);color:var(--text-dim);letter-spacing:.14em;text-transform:uppercase;padding:4px 0}
+.quick-grid{display:flex;flex-direction:column;gap:5px}
+.quick-btn{
+  display:flex;align-items:center;gap:9px;padding:10px 12px;
+  border-radius:var(--rs);border:1px solid var(--border);background:var(--glass);
+  cursor:pointer;transition:all .2s;text-align:left;width:100%;
+}
+.quick-btn:hover{border-color:var(--border-hi);background:var(--glass2);transform:translateX(2px)}
+.quick-icon{font-size:18px;flex-shrink:0}
+.quick-name{font-size:11px;font-weight:700;color:var(--text)}
+.quick-desc{font-size:9px;color:var(--text-dim);font-family:var(--mono);margin-top:1px}
+.add-btn{
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:10px;border-radius:var(--r);border:1px solid rgba(64,176,255,.3);
+  background:var(--blue-d);color:var(--blue);font-size:11px;font-weight:800;
+  cursor:pointer;transition:all .2s;font-family:var(--sans);width:100%;
+}
+.add-btn:hover{background:rgba(64,176,255,.2);box-shadow:0 0 20px rgba(64,176,255,.2);transform:translateY(-1px)}
+
+/* App cards area */
+.n8n-main{display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+.n8n-main::-webkit-scrollbar{width:2px}
+.n8n-main::-webkit-scrollbar-thumb{background:var(--border-hi)}
+.n8n-topbar{display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.n8n-title{font-size:16px;font-weight:900;display:flex;align-items:center;gap:9px}
+.n8n-title-icon{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#e44,#c026d3);display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 0 16px rgba(220,38,38,.3)}
+
+.apps-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:9px}
+.app-card{
+  background:var(--glass);border:1px solid var(--border);
+  border-radius:var(--r);padding:14px;cursor:pointer;position:relative;overflow:hidden;
+  transition:all .22s;
+}
+.app-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;transition:opacity .22s}
+.app-card:hover{border-color:var(--border-hi);background:var(--glass2);transform:translateY(-1px);box-shadow:0 8px 28px rgba(0,0,0,.3)}
+.app-card.running::before,.app-card:hover::before{opacity:1}
+.app-card:not(.running)::before{opacity:.5}
+.acc-red::before{background:linear-gradient(90deg,#e44,#c026d3)}
+.acc-blue::before{background:linear-gradient(90deg,var(--blue2),#6366f1)}
+.acc-green::before{background:linear-gradient(90deg,var(--green),#06b6d4)}
+.acc-orange::before{background:linear-gradient(90deg,var(--orange),#f59e0b)}
+.acc-purple::before{background:linear-gradient(90deg,var(--purple),#ec4899)}
+.acc-cyan::before{background:linear-gradient(90deg,var(--cyan),var(--green))}
+
+.app-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:9px}
+.app-icon-row{display:flex;align-items:center;gap:9px}
+.app-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.aicon-red{background:rgba(228,68,68,.15);border:1px solid rgba(228,68,68,.25)}
+.aicon-blue{background:rgba(64,176,255,.15);border:1px solid rgba(64,176,255,.25)}
+.aicon-green{background:rgba(29,235,138,.15);border:1px solid rgba(29,235,138,.25)}
+.aicon-orange{background:rgba(255,133,51,.15);border:1px solid rgba(255,133,51,.25)}
+.aicon-purple{background:rgba(181,123,255,.15);border:1px solid rgba(181,123,255,.25)}
+.aicon-cyan{background:rgba(0,212,255,.15);border:1px solid rgba(0,212,255,.25)}
+.app-name{font-size:12px;font-weight:800;line-height:1}
+.app-cat{font-size:8px;font-family:var(--mono);color:var(--text-dim);margin-top:2px;letter-spacing:.05em}
+.app-status{display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-size:8px;font-family:var(--mono);font-weight:700;letter-spacing:.06em;flex-shrink:0}
+.s-run{background:var(--green-d);color:var(--green);border:1px solid rgba(29,235,138,.2)}
+.s-stop{background:var(--red-d);color:var(--red);border:1px solid rgba(255,61,90,.2)}
+.s-pause{background:var(--yellow-d);color:var(--yellow);border:1px solid rgba(255,200,64,.2)}
+.app-desc{font-size:10px;color:var(--text-mid);line-height:1.5;margin-bottom:9px}
+.app-meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:9px}
+.app-meta span{font-size:8px;font-family:var(--mono);color:var(--text-dim)}
+.runs-bar{margin-bottom:9px}
+.runs-labels{display:flex;justify-content:space-between;margin-bottom:3px}
+.runs-text{font-size:8px;font-family:var(--mono);color:var(--text-dim);letter-spacing:.06em}
+.runs-count{font-size:8px;font-family:var(--mono);color:var(--text-mid);font-weight:700}
+.runs-track{height:2px;background:rgba(255,255,255,.04);border-radius:1px;overflow:hidden}
+.runs-fill{height:100%;border-radius:1px;transition:width .8s ease}
+.app-actions{display:flex;gap:5px}
+.app-btn{flex:1;padding:6px;border-radius:var(--rs);border:1px solid var(--border);background:none;color:var(--text-mid);font-size:9px;font-family:var(--mono);letter-spacing:.06em;cursor:pointer;transition:all .18s;text-transform:uppercase}
+.app-btn:hover{border-color:var(--border-hi);color:var(--text);background:var(--glass2)}
+.app-btn.p{background:var(--blue-d);color:var(--blue);border-color:rgba(64,176,255,.3)}
+.app-btn.p:hover{background:rgba(64,176,255,.2)}
+.app-btn.d{color:var(--red)}
+.app-btn.d:hover{background:var(--red-d);border-color:rgba(255,61,90,.3)}
+
+/* ── N8N LOG FEED ── */
+.n8n-log{
+  background:var(--glass);border:1px solid var(--border);border-radius:var(--r);
+  padding:12px;flex-shrink:0;
+}
+.log-list{display:flex;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto;margin-top:8px}
+.log-list::-webkit-scrollbar{width:2px}
+.log-item{display:flex;align-items:center;gap:8px;font-size:9px;font-family:var(--mono);padding:4px 8px;border-radius:4px;background:rgba(255,255,255,.015)}
+.log-time{color:var(--text-dim);flex-shrink:0}
+.log-app{color:var(--blue);flex-shrink:0;min-width:80px}
+.log-msg{color:var(--text-mid);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.log-ok{color:var(--green);flex-shrink:0}
+.log-err{color:var(--red);flex-shrink:0}
+
+/* ─────────────────── GUIDE PAGE ─────────────────── */
+#page-guide{padding:16px}
+.guide-layout{display:grid;grid-template-columns:200px 1fr;gap:14px;height:calc(100vh - 120px)}
+.guide-nav{display:flex;flex-direction:column;gap:3px;flex-shrink:0;overflow-y:auto}
+.guide-nav::-webkit-scrollbar{width:2px}
+.guide-nav::-webkit-scrollbar-thumb{background:var(--border-hi)}
+.gnav-section{font-size:7px;font-family:var(--mono);color:var(--text-dim);letter-spacing:.14em;text-transform:uppercase;padding:10px 8px 4px;border-bottom:1px solid var(--border)}
+.gnav-item{
+  display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:var(--rs);
+  cursor:pointer;transition:all .2s;font-size:11px;font-weight:600;color:var(--text-mid);
+}
+.gnav-item:hover{background:var(--glass);color:var(--text)}
+.gnav-item.active{background:var(--blue-d);color:var(--blue)}
+.gnav-icon{font-size:13px;flex-shrink:0}
+
+.guide-content{overflow-y:auto;padding-right:4px}
+.guide-content::-webkit-scrollbar{width:3px}
+.guide-content::-webkit-scrollbar-thumb{background:var(--border-hi)}
+.guide-section{display:none}
+.guide-section.active{display:block}
+
+.guide-h1{font-size:22px;font-weight:900;margin-bottom:6px;line-height:1.1}
+.guide-sub{font-size:12px;color:var(--text-mid);margin-bottom:20px;line-height:1.5;font-family:var(--mono)}
+.guide-h2{font-size:15px;font-weight:800;margin:20px 0 10px;display:flex;align-items:center;gap:8px}
+.guide-h2::after{content:'';flex:1;height:1px;background:var(--border);margin-left:8px}
+.guide-h3{font-size:12px;font-weight:700;margin:14px 0 7px;color:var(--blue)}
+.guide-p{font-size:11px;color:var(--text-mid);line-height:1.7;margin-bottom:10px;font-family:var(--mono)}
+.guide-tip{font-size:10px;color:var(--yellow);background:var(--yellow-d);border:1px solid rgba(255,200,64,.2);border-radius:var(--rs);padding:9px 12px;margin:10px 0;font-family:var(--mono);line-height:1.6;display:flex;gap:8px}
+.guide-warn{font-size:10px;color:var(--red);background:var(--red-d);border:1px solid rgba(255,61,90,.2);border-radius:var(--rs);padding:9px 12px;margin:10px 0;font-family:var(--mono);line-height:1.6;display:flex;gap:8px}
+.guide-ok{font-size:10px;color:var(--green);background:var(--green-d);border:1px solid rgba(29,235,138,.2);border-radius:var(--rs);padding:9px 12px;margin:10px 0;font-family:var(--mono);line-height:1.6;display:flex;gap:8px}
+
+/* Code blocks */
+pre,code{font-family:var(--mono)}
+.code-block{background:#050b14;border:1px solid var(--border);border-radius:var(--rs);padding:14px;margin:10px 0;overflow-x:auto;position:relative}
+.code-block pre{font-size:11px;color:#7ecfff;line-height:1.7;white-space:pre-wrap;word-break:break-all}
+.code-block .comment{color:var(--text-dim)}
+.code-block .cmd{color:var(--green)}
+.code-block .str{color:var(--yellow)}
+.code-block .kw{color:var(--purple)}
+.code-lang{position:absolute;top:8px;right:10px;font-size:8px;font-family:var(--mono);color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase}
+.copy-btn{position:absolute;bottom:8px;right:8px;padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--glass);color:var(--text-dim);font-size:8px;font-family:var(--mono);cursor:pointer;transition:all .18s;letter-spacing:.06em}
+.copy-btn:hover{border-color:var(--border-hi);color:var(--text)}
+.copy-btn.copied{color:var(--green);border-color:rgba(29,235,138,.3)}
+
+.steps{display:flex;flex-direction:column;gap:10px;margin:10px 0}
+.step{display:flex;gap:12px;background:var(--glass);border:1px solid var(--border);border-radius:var(--r);padding:12px}
+.step-num{width:24px;height:24px;border-radius:50%;background:var(--blue-d);border:1px solid rgba(64,176,255,.3);color:var(--blue);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--mono)}
+.step-body{flex:1;min-width:0}
+.step-title{font-size:12px;font-weight:700;margin-bottom:4px}
+.step-desc{font-size:10px;color:var(--text-mid);font-family:var(--mono);line-height:1.6}
+
+.cmd-table{width:100%;border-collapse:collapse;margin:10px 0;font-size:10px}
+.cmd-table th{font-size:8px;font-family:var(--mono);color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase;padding:7px 10px;text-align:left;border-bottom:1px solid var(--border)}
+.cmd-table td{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.03);font-family:var(--mono);vertical-align:top;line-height:1.5}
+.cmd-table tr:hover td{background:rgba(255,255,255,.015)}
+.td-cmd{color:var(--blue);white-space:nowrap}
+.td-desc{color:var(--text-mid)}
+
+.workflow-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:9px;margin:10px 0}
+.wf-card{background:var(--glass);border:1px solid var(--border);border-radius:var(--r);padding:12px;transition:all .2s;cursor:pointer}
+.wf-card:hover{border-color:var(--border-hi);background:var(--glass2);transform:translateY(-1px)}
+.wf-card-icon{font-size:24px;margin-bottom:7px}
+.wf-card-name{font-size:12px;font-weight:800;margin-bottom:3px}
+.wf-card-desc{font-size:9px;color:var(--text-mid);font-family:var(--mono);line-height:1.5}
+
+/* ── TERMINAL PAGE ── */
+#page-terminal{padding:14px;display:flex;flex-direction:column;gap:10px}
+.term-shell{
+  background:#020508;border:1px solid var(--border);border-radius:var(--r);
+  flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0;
+}
+.term-titlebar{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--border);background:rgba(0,0,0,.3);flex-shrink:0}
+.term-dots{display:flex;gap:5px}
+.term-dot{width:10px;height:10px;border-radius:50%}
+.td-r{background:#ff5f56}.td-y{background:#ffbd2e}.td-g{background:#27c93f}
+.term-title{font-size:10px;font-family:var(--mono);color:var(--text-dim);letter-spacing:.08em;flex:1;text-align:center}
+.term-output{flex:1;overflow-y:auto;padding:12px 16px;font-family:var(--mono);font-size:11px;line-height:1.7}
+.term-output::-webkit-scrollbar{width:2px}
+.term-output::-webkit-scrollbar-thumb{background:var(--border-hi)}
+.term-line{margin:0;word-break:break-all}
+.tl-prompt{color:var(--green)}
+.tl-cmd{color:var(--text)}
+.tl-out{color:var(--text-mid)}
+.tl-err{color:var(--red)}
+.tl-ok{color:var(--green)}
+.tl-info{color:var(--blue)}
+.tl-warn{color:var(--yellow)}
+.term-input-row{display:flex;align-items:center;gap:8px;padding:9px 14px;border-top:1px solid var(--border);background:rgba(0,0,0,.3);flex-shrink:0}
+.term-prompt{color:var(--green);font-family:var(--mono);font-size:11px;white-space:nowrap}
+.term-input{flex:1;background:none;border:none;outline:none;color:var(--text);font-family:var(--mono);font-size:11px;caret-color:var(--green)}
+.term-quick-cmds{display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0}
+.qcmd{padding:5px 10px;border-radius:var(--rs);border:1px solid var(--border);background:var(--glass);color:var(--text-mid);font-size:9px;font-family:var(--mono);cursor:pointer;transition:all .18s;letter-spacing:.04em}
+.qcmd:hover{border-color:var(--border-hi);color:var(--text);background:var(--glass2)}
+
+/* ── MODAL ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(3,6,9,.88);backdrop-filter:blur(8px);z-index:200;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{
+  background:#070e1c;border:1px solid var(--border-hi);border-radius:14px;
+  padding:24px;width:100%;max-width:500px;position:relative;
+  box-shadow:0 32px 80px rgba(0,0,0,.7);animation:mIn .2s ease;
+}
+@keyframes mIn{from{opacity:0;transform:scale(.94) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.modal-x{position:absolute;top:14px;right:14px;width:26px;height:26px;border-radius:5px;border:1px solid var(--border);background:none;color:var(--text-mid);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .18s}
+.modal-x:hover{border-color:var(--red);color:var(--red)}
+.modal-title{font-size:15px;font-weight:900;margin-bottom:3px}
+.modal-sub{font-size:10px;color:var(--text-mid);font-family:var(--mono);margin-bottom:18px}
+.form-label{font-size:8px;font-family:var(--mono);color:var(--text-dim);letter-spacing:.12em;text-transform:uppercase;display:block;margin-bottom:5px}
+.form-input,.form-select,.form-textarea{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:var(--rs);padding:9px 11px;color:var(--text);font-size:11px;font-family:var(--mono);outline:none;transition:border-color .18s;margin-bottom:10px}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--border-hi)}
+.form-select{appearance:none;cursor:pointer}
+option{background:#070e1c}
+.form-textarea{resize:vertical;min-height:56px;line-height:1.5}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.tpl-chips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px}
+.tpl-chip{padding:4px 9px;border-radius:4px;border:1px solid var(--border);background:var(--glass);font-size:9px;font-family:var(--mono);color:var(--text-mid);cursor:pointer;transition:all .18s;letter-spacing:.04em}
+.tpl-chip:hover{border-color:var(--border-hi);color:var(--text);background:var(--blue-d)}
+.modal-btns{display:flex;gap:7px;margin-top:16px}
+.mbtn-cancel{flex:1;padding:9px;border-radius:var(--rs);border:1px solid var(--border);background:none;color:var(--text-mid);font-size:11px;font-family:var(--mono);cursor:pointer;transition:all .18s;letter-spacing:.06em;text-transform:uppercase}
+.mbtn-cancel:hover{border-color:var(--border-hi);color:var(--text)}
+.mbtn-ok{flex:2;padding:9px;border-radius:var(--rs);border:none;background:linear-gradient(135deg,#e44,#c026d3);color:#fff;font-size:11px;font-weight:800;cursor:pointer;transition:all .2s;font-family:var(--sans)}
+.mbtn-ok:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(220,38,38,.35)}
+
+/* ── NOTIFICATION TOAST ── */
+.toast{
+  position:fixed;bottom:20px;right:20px;z-index:300;
+  background:#070e1c;border:1px solid var(--border-hi);border-radius:var(--r);
+  padding:12px 16px;display:flex;align-items:center;gap:10px;
+  font-size:11px;font-family:var(--mono);color:var(--text);
+  box-shadow:0 16px 40px rgba(0,0,0,.6);
+  transform:translateY(80px);opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);
+  pointer-events:none;max-width:320px;
+}
+.toast.show{transform:translateY(0);opacity:1}
+.toast-icon{font-size:16px;flex-shrink:0}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1300px){
+  .dash-grid{grid-template-columns:1fr 1fr 1fr 1fr;grid-template-rows:auto;height:auto}
+  .c-clock{grid-column:1;grid-row:1}
+  .c-weather{grid-column:2;grid-row:1}
+  .c-vitals{grid-column:1/5;grid-row:2}
+  .c-github{grid-column:3/5;grid-row:1}
+  .c-commits{grid-column:1/3;grid-row:3}
+  .c-tasks{grid-column:3/5;grid-row:3}
+  .c-network{grid-column:1/5;grid-row:4}
+}
+@media(max-width:900px){
+  #page-dash{overflow-y:auto}
+  .dash-grid{grid-template-columns:1fr 1fr;height:auto}
+  .c-clock{grid-column:1;grid-row:1}
+  .c-weather{grid-column:2;grid-row:1}
+  .c-vitals{grid-column:1/3;grid-row:2}
+  .c-github{grid-column:1/3;grid-row:3}
+  .c-commits{grid-column:1/3;grid-row:4}
+  .c-tasks{grid-column:1/3;grid-row:5}
+  .c-network{grid-column:1/3;grid-row:6}
+  .n8n-layout{grid-template-columns:1fr}
+  .guide-layout{grid-template-columns:1fr}
+  .guide-nav{flex-direction:row;flex-wrap:wrap;overflow:visible}
+  .nav-tabs .nav-tab{padding:4px 9px;font-size:9px}
+}
+</style>
+</head>
+<body>
+<div class="ambient"><div class="amb amb1"></div><div class="amb amb2"></div><div class="amb amb3"></div></div>
+
+<div class="shell">
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+<header>
+  <div class="logo">🍓</div>
+  <div class="hdr-info">
+    <div class="hdr-host" id="hdr-hostname">raspberrypi-node-05</div>
+    <div class="hdr-status"><span class="live-dot"></span><span id="hdr-uptime">CONNECTING...</span></div>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="Page.show('dash',this)">Dashboard</button>
+    <button class="nav-tab" onclick="Page.show('n8n',this)">⚡ n8n</button>
+    <button class="nav-tab" onclick="Page.show('terminal',this)">Terminal</button>
+    <button class="nav-tab" onclick="Page.show('guide',this)">📖 Guide</button>
+  </div>
+
+  <div class="hdr-actions">
+    <button class="hdr-btn" onclick="API.refresh()">↻ Refresh</button>
+    <button class="hdr-btn" onclick="Settings.open()">⚙</button>
+    <div class="hdr-clock" id="hdr-clock">--:--:--</div>
+  </div>
+</header>
+
+<!-- ═══════════════ MAIN ═══════════════ -->
+<div class="main">
+
+<!-- ─────────── DASHBOARD PAGE ─────────── -->
+<div class="page active" id="page-dash">
+<div class="dash-grid">
+
+  <!-- Clock -->
+  <div class="card c-clock">
+    <div class="card-title"><span>LOCAL TIME</span><span class="badge badge-blue" id="tz-badge">UTC</span></div>
+    <div class="clock-big"><span id="cl-h">--</span><span class="clock-colon">:</span><span id="cl-m">--</span><span class="clock-colon" style="font-size:22px;opacity:.7">:</span><span class="clock-sec" id="cl-s">--</span></div>
+    <div class="clock-date" id="cl-date">Loading...</div>
+    <div class="clock-tz" id="cl-tz">Detecting...</div>
+  </div>
+
+  <!-- Weather -->
+  <div class="card c-weather">
+    <div class="card-title"><span>WEATHER</span><span class="badge badge-green" id="weather-badge">Demo</span></div>
+    <div class="wtop">
+      <div>
+        <div class="wtemp" id="w-temp">18<sup>°C</sup></div>
+        <div class="wdesc" id="w-desc">Partly Cloudy</div>
+        <div class="wloc" id="w-loc">📍 San Francisco, CA</div>
+      </div>
+      <div class="wicon" id="w-icon">⛅</div>
+    </div>
+    <div class="wforecast" id="w-forecast">
+      <div class="wday"><div class="wdname">Tue</div><div class="wdicon">☁️</div><div class="wdtemp">16°</div></div>
+      <div class="wday"><div class="wdname">Wed</div><div class="wdicon">☀️</div><div class="wdtemp">21°</div></div>
+      <div class="wday"><div class="wdname">Thu</div><div class="wdicon">🌦️</div><div class="wdtemp">19°</div></div>
+    </div>
+  </div>
+
+  <!-- System Vitals -->
+  <div class="card c-vitals">
+    <div class="vitals-h">
+      <div class="vitals-title">⚡ Live System Vitals</div>
+      <div id="vitals-badge" class="badge badge-green">● Normal</div>
+    </div>
+    <div class="gauges">
+      <div class="gauge-w">
+        <div class="gauge-c" style="width:88px;height:88px">
+          <svg class="gauge-svg" width="88" height="88" viewBox="0 0 88 88"><circle class="gauge-track" cx="44" cy="44" r="37" stroke-width="5"/><circle class="gauge-arc" id="g-cpu" cx="44" cy="44" r="37" stroke-width="5" stroke="var(--blue)" stroke-dasharray="0 232.5" filter="drop-shadow(0 0 5px var(--blue))"/></svg>
+          <div class="gauge-label-c"><span class="gauge-val" id="gv-cpu" style="color:var(--blue)">0%</span><span class="gauge-unit">CPU</span></div>
+        </div>
+        <div class="gauge-name">4 Cores · ARM A76</div>
+        <div class="gauge-sub" id="gs-cpu">2400 MHz</div>
+      </div>
+      <div class="gauge-w">
+        <div class="gauge-c" style="width:88px;height:88px">
+          <svg class="gauge-svg" width="88" height="88" viewBox="0 0 88 88"><circle class="gauge-track" cx="44" cy="44" r="37" stroke-width="5"/><circle class="gauge-arc" id="g-ram" cx="44" cy="44" r="37" stroke-width="5" stroke="var(--green)" stroke-dasharray="0 232.5" filter="drop-shadow(0 0 5px var(--green))"/></svg>
+          <div class="gauge-label-c"><span class="gauge-val" id="gv-ram" style="color:var(--green);font-size:14px">0GB</span><span class="gauge-unit">RAM</span></div>
+        </div>
+        <div class="gauge-name">8GB DDR4-3200</div>
+        <div class="gauge-sub" id="gs-ram">0% used</div>
+      </div>
+      <div class="gauge-w">
+        <div class="gauge-c" style="width:88px;height:88px">
+          <svg class="gauge-svg" width="88" height="88" viewBox="0 0 88 88"><circle class="gauge-track" cx="44" cy="44" r="37" stroke-width="5"/><circle class="gauge-arc" id="g-temp" cx="44" cy="44" r="37" stroke-width="5" stroke="var(--orange)" stroke-dasharray="0 232.5" filter="drop-shadow(0 0 5px var(--orange))"/></svg>
+          <div class="gauge-label-c"><span class="gauge-val" id="gv-temp" style="color:var(--orange);font-size:14px">0°C</span><span class="gauge-unit">Temp</span></div>
+        </div>
+        <div class="gauge-name">Throttle @ 80°C</div>
+        <div class="gauge-sub">Fan: <span id="gs-fan">1200</span> RPM</div>
+      </div>
+    </div>
+    <div class="vdiv"></div>
+    <div class="vbot">
+      <div class="vstat"><div class="vstat-l">Disk</div><div class="vstat-v" id="vv-disk" style="color:var(--blue)">—</div><div class="pbar"><div class="pfill pf-b" id="vp-disk" style="width:0%"></div></div><div class="vstat-s" id="vs-disk">—</div></div>
+      <div class="vstat"><div class="vstat-l">Net ↓</div><div class="vstat-v" id="vv-dl" style="color:var(--green)">—</div><div class="pbar"><div class="pfill pf-g" id="vp-dl" style="width:0%"></div></div><div class="vstat-s">Mbps link</div></div>
+      <div class="vstat"><div class="vstat-l">Net ↑</div><div class="vstat-v" id="vv-ul" style="color:var(--orange)">—</div><div class="pbar"><div class="pfill pf-o" id="vp-ul" style="width:0%"></div></div><div class="vstat-s">Wi-Fi 6E</div></div>
+      <div class="vstat"><div class="vstat-l">Load</div><div class="vstat-v" id="vv-load" style="color:var(--text)">—</div><div class="pbar"><div class="pfill pf-g" id="vp-load" style="width:0%"></div></div><div class="vstat-s">1m avg</div></div>
+    </div>
+  </div>
+
+  <!-- GitHub -->
+  <div class="card c-github">
+    <div class="card-title" style="margin-bottom:8px"><span>GITHUB</span></div>
+    <div class="gh-profile">
+      <div class="gh-ava" id="gh-ava">YN</div>
+      <div><div class="gh-name" id="gh-name">Your Name</div><div class="gh-user" id="gh-user">@yourusername</div></div>
+    </div>
+    <div class="gh-nums" id="gh-nums">
+      <div class="gh-num"><div class="gh-nv" id="gh-repos">—</div><div class="gh-nl">Repos</div></div>
+      <div class="gh-num"><div class="gh-nv" id="gh-followers">—</div><div class="gh-nl">Followers</div></div>
+      <div class="gh-num"><div class="gh-nv" id="gh-stars">—</div><div class="gh-nl">Stars</div></div>
+    </div>
+    <div class="card-title" style="margin-bottom:5px"><span>CONTRIBUTIONS</span><span class="gh-total" id="contrib-total">—</span></div>
+    <div class="contrib-wrap" style="height:80px"><div class="contrib-grid" id="contrib-grid"></div></div>
+  </div>
+
+  <!-- Commits -->
+  <div class="card c-commits">
+    <div class="card-title" style="margin-bottom:8px"><span>RECENT COMMITS</span><span class="badge badge-blue">Live</span></div>
+    <div class="commit-list" id="commit-list">
+      <div class="ci"><div class="ci-dot" style="color:var(--blue);background:var(--blue)"></div><div class="ci-body"><div class="ci-top"><span class="ci-repo badge badge-blue">dashboard</span><span class="ci-time">Loading...</span></div><div class="ci-msg">Fetching commits...</div><div class="ci-sha">—</div></div></div>
+    </div>
+    <button class="btn-ghost" id="gh-link" onclick="window.open('https://github.com','_blank')">→ View all on GitHub</button>
+  </div>
+
+  <!-- Tasks -->
+  <div class="card c-tasks">
+    <div class="card-title" style="margin-bottom:8px"><span>TODAY'S AGENDA</span><span class="badge badge-blue" id="task-badge">0 left</span></div>
+    <div class="task-list" id="task-list"></div>
+    <div style="margin-top:7px;font-size:9px;font-family:var(--mono);color:var(--text-dim);text-align:right" id="task-source">Source: local</div>
+  </div>
+
+  <!-- Network -->
+  <div class="card c-network">
+    <div class="card-title" style="margin-bottom:8px"><span>NETWORK</span><span class="badge badge-green">WPA3</span></div>
+    <div class="net-inner">
+      <div class="net-stats">
+        <div class="ns"><div class="ns-l">Download</div><div class="ns-v" id="net-dl" style="color:var(--green)">—</div><div class="ns-s">↓ Mbps link</div></div>
+        <div class="ns"><div class="ns-l">Upload</div><div class="ns-v" id="net-ul" style="color:var(--blue)">—</div><div class="ns-s">↑ Mbps link</div></div>
+      </div>
+      <div class="net-div"></div>
+      <div class="net-right">
+        <svg class="sparkline" viewBox="0 0 155 36" preserveAspectRatio="none">
+          <defs><linearGradient id="sg" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="var(--blue)" stop-opacity=".3"/><stop offset="100%" stop-color="var(--blue)" stop-opacity="0"/></linearGradient></defs>
+          <path id="spark" d="M0,28 L155,10" fill="none" stroke="var(--blue)" stroke-width="1.5" stroke-linejoin="round"/>
+          <path id="spark-fill" d="M0,28 L155,10 V36 H0Z" fill="url(#sg)"/>
+        </svg>
+        <div class="net-ip" id="net-ip">192.168.1.104</div>
+        <div class="net-row">Gateway: <b id="net-gw">—</b></div>
+        <div class="net-row">DNS: <b>1.1.1.1 Cloudflare</b></div>
+        <div class="net-row">Ping: <b id="net-ping" style="color:var(--green)">— ms</b></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ─────────── N8N PAGE ─────────── -->
+<div class="page" id="page-n8n">
+<div id="page-n8n-inner" style="padding:14px;height:100%;overflow-y:auto">
+  <div class="n8n-layout">
+    <div class="n8n-sidebar">
+
+      <!-- Quick stats -->
+      <div>
+        <div class="n8n-quick-title">Overview</div>
+        <div class="n8n-stat-grid" style="margin-top:6px">
+          <div class="n8n-stat"><div class="n8n-stat-l">Active</div><div class="n8n-stat-v" id="n8n-active" style="color:var(--green)">0</div><div class="n8n-stat-s">workflows</div></div>
+          <div class="n8n-stat"><div class="n8n-stat-l">Runs</div><div class="n8n-stat-v" id="n8n-runs" style="color:var(--blue)">0</div><div class="n8n-stat-s">total</div></div>
+          <div class="n8n-stat"><div class="n8n-stat-l">Success</div><div class="n8n-stat-v" id="n8n-success" style="color:var(--green)">—%</div><div class="n8n-stat-s">24h rate</div></div>
+          <div class="n8n-stat"><div class="n8n-stat-l">n8n</div><div class="n8n-stat-v" style="color:var(--text);font-size:16px">1.28</div><div class="n8n-stat-s">self-hosted</div></div>
+        </div>
+      </div>
+
+      <!-- Add button -->
+      <button class="add-btn" onclick="N8N.openAddModal()">＋ Add Workflow</button>
+
+      <!-- Open n8n UI -->
+      <button class="btn-ghost" onclick="N8N.openUI()">⚡ Open n8n Editor →</button>
+
+      <!-- Quick templates -->
+      <div>
+        <div class="n8n-quick-title" style="margin-top:2px">Quick Add</div>
+        <div class="quick-grid" style="margin-top:6px" id="quick-templates"></div>
+      </div>
+
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px;min-width:0">
+      <!-- Topbar -->
+      <div class="n8n-topbar">
+        <div class="n8n-title"><div class="n8n-title-icon">⚡</div>n8n Automation Hub<span class="badge badge-purple" id="app-count">0 apps</span></div>
+        <div style="display:flex;gap:7px;align-items:center">
+          <input id="n8n-search" style="background:var(--glass);border:1px solid var(--border);border-radius:var(--rs);padding:6px 11px;color:var(--text);font-size:10px;font-family:var(--mono);outline:none;width:160px" placeholder="Search workflows..." oninput="N8N.filter(this.value)"/>
+          <select id="n8n-filter" style="background:var(--glass);border:1px solid var(--border);border-radius:var(--rs);padding:6px 9px;color:var(--text-mid);font-size:9px;font-family:var(--mono);outline:none;cursor:pointer" onchange="N8N.filter()">
+            <option value="">All Status</option><option value="running">Running</option><option value="paused">Paused</option><option value="stopped">Stopped</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Apps grid -->
+      <div class="apps-grid" id="apps-grid"></div>
+
+      <!-- Execution log -->
+      <div class="n8n-log">
+        <div class="card-title"><span>EXECUTION LOG</span><span class="badge badge-green" id="log-live">● Live</span></div>
+        <div class="log-list" id="log-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ─────────── TERMINAL PAGE ─────────── -->
+<div class="page" id="page-terminal">
+  <div class="term-shell">
+    <div class="term-titlebar">
+      <div class="term-dots"><div class="term-dot td-r"></div><div class="term-dot td-y"></div><div class="term-dot td-g"></div></div>
+      <div class="term-title" id="term-title">pi@raspberrypi-node-05:~ — bash</div>
+    </div>
+    <div class="term-output" id="term-output"></div>
+    <div class="term-input-row">
+      <div class="term-prompt" id="term-prompt">pi@raspberrypi:~$</div>
+      <input class="term-input" id="term-input" placeholder="Type a command..." autocomplete="off" spellcheck="false"/>
+    </div>
+  </div>
+  <div class="term-quick-cmds">
+    <span style="font-size:9px;font-family:var(--mono);color:var(--text-dim);align-self:center">Quick:</span>
+    <button class="qcmd" onclick="Term.run('htop')">htop</button>
+    <button class="qcmd" onclick="Term.run('df -h')">df -h</button>
+    <button class="qcmd" onclick="Term.run('free -h')">free -h</button>
+    <button class="qcmd" onclick="Term.run('vcgencmd measure_temp')">CPU Temp</button>
+    <button class="qcmd" onclick="Term.run('uname -a')">uname</button>
+    <button class="qcmd" onclick="Term.run('ip addr show')">IP Info</button>
+    <button class="qcmd" onclick="Term.run('docker ps')">Docker</button>
+    <button class="qcmd" onclick="Term.run('pm2 list')">PM2</button>
+    <button class="qcmd" onclick="Term.run('uptime')">Uptime</button>
+    <button class="qcmd" onclick="Term.run('cat /proc/cpuinfo | grep Model')">Pi Model</button>
+    <button class="qcmd" onclick="Term.clear()">Clear</button>
+  </div>
+</div>
+
+<!-- ─────────── GUIDE PAGE ─────────── -->
+<div class="page" id="page-guide">
+<div class="guide-layout">
+
+  <!-- Guide nav -->
+  <div class="guide-nav">
+    <div class="gnav-section">Getting Started</div>
+    <div class="gnav-item active" onclick="Guide.show('pi-setup',this)"><span class="gnav-icon">🍓</span>Pi OS Setup</div>
+    <div class="gnav-item" onclick="Guide.show('pi-first-boot',this)"><span class="gnav-icon">🚀</span>First Boot</div>
+    <div class="gnav-item" onclick="Guide.show('pi-ssh',this)"><span class="gnav-icon">🔐</span>SSH & Remote</div>
+    <div class="gnav-item" onclick="Guide.show('pi-docker',this)"><span class="gnav-icon">🐳</span>Docker Setup</div>
+
+    <div class="gnav-section">Pi OS Guide</div>
+    <div class="gnav-item" onclick="Guide.show('os-commands',this)"><span class="gnav-icon">💻</span>Essential Commands</div>
+    <div class="gnav-item" onclick="Guide.show('os-packages',this)"><span class="gnav-icon">📦</span>Installing Software</div>
+    <div class="gnav-item" onclick="Guide.show('os-network',this)"><span class="gnav-icon">🌐</span>Networking</div>
+    <div class="gnav-item" onclick="Guide.show('os-services',this)"><span class="gnav-icon">⚙️</span>Services & PM2</div>
+
+    <div class="gnav-section">n8n Setup</div>
+    <div class="gnav-item" onclick="Guide.show('n8n-install',this)"><span class="gnav-icon">⚡</span>Install n8n</div>
+    <div class="gnav-item" onclick="Guide.show('n8n-workflows',this)"><span class="gnav-icon">🔗</span>Create Workflows</div>
+    <div class="gnav-item" onclick="Guide.show('n8n-templates',this)"><span class="gnav-icon">📋</span>Workflow Templates</div>
+    <div class="gnav-item" onclick="Guide.show('n8n-integrate',this)"><span class="gnav-icon">🔌</span>Integrations</div>
+
+    <div class="gnav-section">Dashboard</div>
+    <div class="gnav-item" onclick="Guide.show('dash-deploy',this)"><span class="gnav-icon">📡</span>Deploy Dashboard</div>
+    <div class="gnav-item" onclick="Guide.show('dash-config',this)"><span class="gnav-icon">🎛</span>Configuration</div>
+    <div class="gnav-item" onclick="Guide.show('dash-github',this)"><span class="gnav-icon">🐙</span>Push to GitHub</div>
+  </div>
+
+  <!-- Guide content -->
+  <div class="guide-content" id="guide-content">
+
+    <!-- Pi OS Setup -->
+    <div class="guide-section active" id="gs-pi-setup">
+      <div class="guide-h1">🍓 Raspberry Pi 5 Setup</div>
+      <div class="guide-sub">Complete guide to flashing Pi OS and getting your Pi 5 running from scratch.</div>
+
+      <div class="guide-h2">What You Need</div>
+      <div class="guide-p">Before you start, grab these items:</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">Raspberry Pi 5 (4GB or 8GB)</div><div class="step-desc">8GB recommended for running n8n + dashboard simultaneously. Pi 5 has a 2.4GHz quad-core ARM Cortex-A76 — significantly faster than Pi 4.</div></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">MicroSD Card (32GB+ Class 10 / A2)</div><div class="step-desc">Samsung Pro Endurance or SanDisk Extreme are recommended. A2 rating means faster random read/write — important for an OS drive.</div></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">Official Pi 5 Power Supply (5V 5A USB-C)</div><div class="step-desc">The Pi 5 draws more power than Pi 4. Using an underpowered supply causes throttling. Use the official 27W USB-C adapter.</div></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><div class="step-title">SD Card Reader + Computer</div><div class="step-desc">To flash the OS from your main machine. Any USB-A or USB-C card reader works.</div></div></div>
+      </div>
+
+      <div class="guide-h2">Flash Pi OS with Raspberry Pi Imager</div>
+      <div class="guide-tip">💡 Raspberry Pi Imager is the official tool — it handles everything including pre-configuring Wi-Fi and SSH before you even boot.</div>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body">
+          <div class="step-title">Download Raspberry Pi Imager</div>
+          <div class="step-desc">Get it from <span style="color:var(--blue)">https://www.raspberrypi.com/software/</span> — available for Windows, Mac, and Linux. Install it like any normal app.</div>
+        </div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body">
+          <div class="step-title">Choose Device → Raspberry Pi 5</div>
+          <div class="step-desc">Open Imager, click "CHOOSE DEVICE" and select Raspberry Pi 5 from the list.</div>
+        </div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body">
+          <div class="step-title">Choose OS → Raspberry Pi OS (64-bit)</div>
+          <div class="step-desc">Click "CHOOSE OS" → "Raspberry Pi OS (other)" → "Raspberry Pi OS (64-bit)". The 64-bit version runs Docker and modern software much better.</div>
+        </div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body">
+          <div class="step-title">⚙️ Configure Advanced Settings (IMPORTANT)</div>
+          <div class="step-desc">Click the gear icon ⚙ before writing. Set your: hostname, username/password, Wi-Fi SSID + password, enable SSH. This saves tons of time — no keyboard/monitor needed on first boot.</div>
+        </div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-body">
+          <div class="step-title">Choose Storage → Your SD Card</div>
+          <div class="step-desc">Click "CHOOSE STORAGE" and select your microSD card. Double-check it's the right device!</div>
+        </div></div>
+        <div class="step"><div class="step-num">6</div><div class="step-body">
+          <div class="step-title">Write and Wait</div>
+          <div class="step-desc">Click "WRITE" → confirm → wait ~5 minutes for flashing + verification. Then eject safely and insert into your Pi 5.</div>
+        </div></div>
+      </div>
+
+      <div class="guide-ok">✅ First boot takes 2–3 minutes as the Pi expands the filesystem and sets up. The green LED will flash during this time — do not unplug!</div>
+    </div>
+
+    <!-- First Boot -->
+    <div class="guide-section" id="gs-pi-first-boot">
+      <div class="guide-h1">🚀 First Boot & Initial Setup</div>
+      <div class="guide-sub">Everything to run after your Pi boots for the first time.</div>
+
+      <div class="guide-h2">Connect via SSH</div>
+      <div class="guide-p">If you configured SSH in Imager, connect from any computer on the same network:</div>
+      <div class="code-block">
+        <div class="code-lang">bash</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># Replace 'pi' with your username and the IP with your Pi's IP</span>
+<span class="cmd">ssh pi@raspberrypi.local</span>
+<span class="comment"># Or use the IP address directly:</span>
+<span class="cmd">ssh pi@192.168.1.XXX</span>
+<span class="comment"># Find your Pi's IP in your router admin panel, or on the Pi run:</span>
+<span class="cmd">hostname -I</span></pre>
+      </div>
+
+      <div class="guide-h2">Update Everything First</div>
+      <div class="guide-warn">⚠️ Always update before installing anything. Fresh Pi OS installs are often weeks out of date.</div>
+      <div class="code-block">
+        <div class="code-lang">bash</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># Update package lists and upgrade all packages</span>
+<span class="cmd">sudo apt update && sudo apt upgrade -y</span>
+<span class="comment"># Update the Pi firmware (Pi 5 specific)</span>
+<span class="cmd">sudo rpi-eeprom-update</span>
+<span class="comment"># Reboot to apply updates</span>
+<span class="cmd">sudo reboot</span></pre>
+      </div>
+
+      <div class="guide-h2">Essential First Config</div>
+      <div class="code-block">
+        <div class="code-lang">bash</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># Open Pi configuration tool</span>
+<span class="cmd">sudo raspi-config</span>
+<span class="comment"># Navigate with arrow keys:
+# → System Options → Hostname (set a good name)
+# → Interface Options → SSH (make sure it's on)
+# → Performance Options → GPU Memory (set to 16MB for headless)
+# → Advanced → Expand Filesystem (if not done automatically)</span></pre>
+      </div>
+
+      <div class="guide-h2">Install Essential Tools</div>
+      <div class="code-block">
+        <div class="code-lang">bash</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="cmd">sudo apt install -y \
+  git curl wget nano vim htop \
+  net-tools nmap ncdu tree \
+  build-essential python3-pip \
+  ufw fail2ban</span>
+
+<span class="comment"># Install Node.js (LTS via NodeSource)</span>
+<span class="cmd">curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs</span>
+<span class="cmd">node --version && npm --version</span>  <span class="comment"># verify</span>
+
+<span class="comment"># Install PM2 process manager globally</span>
+<span class="cmd">sudo npm install -g pm2</span></pre>
+      </div>
+
+      <div class="guide-h2">Firewall Setup</div>
+      <div class="code-block">
+        <div class="code-lang">bash</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="cmd">sudo ufw allow 22/tcp</span>    <span class="comment"># SSH</span>
+<span class="cmd">sudo ufw allow 80/tcp</span>    <span class="comment"># HTTP</span>
+<span class="cmd">sudo ufw allow 3001/tcp</span>  <span class="comment"># Dashboard</span>
+<span class="cmd">sudo ufw allow 5678/tcp</span>  <span class="comment"># n8n</span>
+<span class="cmd">sudo ufw enable</span>
+<span class="cmd">sudo ufw status</span></pre>
+      </div>
+    </div>
+
+    <!-- SSH -->
+    <div class="guide-section" id="gs-pi-ssh">
+      <div class="guide-h1">🔐 SSH & Remote Access</div>
+      <div class="guide-sub">Set up passwordless SSH, VS Code remote dev, and secure access from anywhere.</div>
+
+      <div class="guide-h2">SSH Key Authentication (No Password)</div>
+      <div class="code-block">
+        <div class="code-lang">bash</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># On your MAIN COMPUTER, generate an SSH key pair</span>
+<span class="cmd">ssh-keygen -t ed25519 -C "pi-dashboard"</span>
+<span class="comment"># Press Enter for defaults. Key saved to ~/.ssh/id_ed25519</span>
+
+<span class="comment"># Copy your public key to the Pi</span>
+<span class="cmd">ssh-copy-id pi@raspberrypi.local</span>
+<span class="comment"># Enter password once. After this, no password needed!</span>
+
+<span class="comment"># Test it — should connect without asking for password</span>
+<span class="cmd">ssh pi@raspberrypi.local</span></pre>
+      </div>
+
+      <div class="guide-h2">SSH Config File (Easier Access)</div>
+      <div class="guide-p">Add this to <code style="color:var(--blue)">~/.ssh/config</code> on your computer for one-word access:</div>
+      <div class="code-block">
+        <div class="code-lang">config</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="str">Host pi
+  HostName raspberrypi.local
+  User pi
+  IdentityFile ~/.ssh/id_ed25519
+  ServerAliveInterval 60</span>
+<span class="comment"># Now just type: ssh pi</span></pre>
+      </div>
+
+      <div class="guide-h2">VS Code Remote SSH</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">Install "Remote - SSH" extension in VS Code</div><div class="step-desc">Open VS Code → Extensions (Ctrl+Shift+X) → Search "Remote - SSH" → Install the Microsoft extension.</div></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">Connect to Pi</div><div class="step-desc">Press F1 → "Remote-SSH: Connect to Host" → type "pi@raspberrypi.local". VS Code will open a new window connected to your Pi — edit files live!</div></div></div>
+      </div>
+
+      <div class="guide-h2">Access Dashboard Anywhere (Cloudflare Tunnel)</div>
+      <div class="code-block">
+        <div class="code-lang">bash</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># Install cloudflared</span>
+<span class="cmd">curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64.deb
+sudo dpkg -i cloudflared.deb</span>
+
+<span class="comment"># Login and create a tunnel (one-time setup)</span>
+<span class="cmd">cloudflared tunnel login
+cloudflared tunnel create pi-dashboard</span>
+
+<span class="comment"># Run the tunnel (expose port 3001 publicly)</span>
+<span class="cmd">cloudflared tunnel --url http://localhost:3001</span>
+<span class="comment"># You'll get a URL like: https://random-words.trycloudflare.com</span></pre>
+      </div>
+    </div>
+
+    <!-- Docker -->
+    <div class="guide-section" id="gs-pi-docker">
+      <div class="guide-h1">🐳 Docker on Pi 5</div>
+      <div class="guide-sub">Install Docker and Docker Compose to run n8n and other services as containers.</div>
+
+      <div class="guide-h2">Install Docker</div>
+      <div class="code-block">
+        <div class="code-lang">bash</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># Official Docker install script (works on Pi OS 64-bit)</span>
+<span class="cmd">curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh</span>
+
+<span class="comment"># Add your user to docker group (no sudo needed)</span>
+<span class="cmd">sudo usermod -aG docker $USER
+newgrp docker</span>
+
+<span class="comment"># Verify Docker works</span>
+<span class="cmd">docker --version
+docker run hello-world</span>
+
+<span class="comment"># Install Docker Compose plugin</span>
+<span class="cmd">sudo apt install -y docker-compose-plugin
+docker compose version</span></pre>
+      </div>
+
+      <div class="guide-h2">Enable Docker on Boot</div>
+      <div class="code-block">
+        <div class="code-lang">bash</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="cmd">sudo systemctl enable docker
+sudo systemctl start docker</span></pre>
+      </div>
+    </div>
+
+    <!-- OS Commands -->
+    <div class="guide-section" id="gs-os-commands">
+      <div class="guide-h1">💻 Essential Pi OS Commands</div>
+      <div class="guide-sub">The commands you'll use every day on Raspberry Pi OS (Debian-based Linux).</div>
+
+      <div class="guide-h2">Navigation & Files</div>
+      <table class="cmd-table">
+        <tr><th>Command</th><th>What it does</th></tr>
+        <tr><td class="td-cmd">ls -la</td><td class="td-desc">List files (including hidden) with permissions and sizes</td></tr>
+        <tr><td class="td-cmd">cd ~/projects</td><td class="td-desc">Change directory to ~/projects</td></tr>
+        <tr><td class="td-cmd">pwd</td><td class="td-desc">Print current directory path</td></tr>
+        <tr><td class="td-cmd">mkdir -p path/to/dir</td><td class="td-desc">Create directory (and parents if needed)</td></tr>
+        <tr><td class="td-cmd">cp -r src/ dst/</td><td class="td-desc">Copy file or folder recursively</td></tr>
+        <tr><td class="td-cmd">mv file.txt newname.txt</td><td class="td-desc">Move or rename a file</td></tr>
+        <tr><td class="td-cmd">rm -rf folder/</td><td class="td-desc">⚠️ Force delete folder and contents — be careful!</td></tr>
+        <tr><td class="td-cmd">cat file.txt</td><td class="td-desc">Print file contents to terminal</td></tr>
+        <tr><td class="td-cmd">nano file.txt</td><td class="td-desc">Edit file in nano (Ctrl+X to exit, Y to save)</td></tr>
+        <tr><td class="td-cmd">find / -name "*.log"</td><td class="td-desc">Find all .log files from root</td></tr>
+        <tr><td class="td-cmd">grep -r "error" /var/log/</td><td class="td-desc">Search for "error" in all files under /var/log</td></tr>
+        <tr><td class="td-cmd">tail -f /var/log/syslog</td><td class="td-desc">Watch a log file in real-time</td></tr>
+      </table>
+
+      <div class="guide-h2">System Monitoring</div>
+      <table class="cmd-table">
+        <tr><th>Command</th><th>What it does</th></tr>
+        <tr><td class="td-cmd">htop</td><td class="td-desc">Interactive process monitor (like Task Manager)</td></tr>
+        <tr><td class="td-cmd">df -h</td><td class="td-desc">Show disk space usage in human-readable form</td></tr>
+        <tr><td class="td-cmd">free -h</td><td class="td-desc">Show RAM usage</td></tr>
+        <tr><td class="td-cmd">vcgencmd measure_temp</td><td class="td-desc">Read CPU temperature (Pi-specific)</td></tr>
+        <tr><td class="td-cmd">uptime</td><td class="td-desc">How long the Pi has been running + load averages</td></tr>
+        <tr><td class="td-cmd">top</td><td class="td-desc">Basic process monitor (htop is better)</td></tr>
+        <tr><td class="td-cmd">ps aux | grep node</td><td class="td-desc">List all running processes, filter by "node"</td></tr>
+        <tr><td class="td-cmd">journalctl -f</td><td class="td-desc">Watch system logs in real-time</td></tr>
+        <tr><td class="td-cmd">dmesg | tail</td><td class="td-desc">Show recent kernel messages</td></tr>
+      </table>
+
+      <div class="guide-h2">Network Commands</div>
+      <table class="cmd-table">
+        <tr><th>Command</th><th>What it does</th></tr>
+        <tr><td class="td-cmd">hostname -I</td><td class="td-desc">Show all IP addresses</td></tr>
+        <tr><td class="td-cmd">ip addr show</td><td class="td-desc">Detailed network interface info</td></tr>
+        <tr><td class="td-cmd">ping -c 4 google.com</td><td class="td-desc">Test internet connectivity (4 pings)</td></tr>
+        <tr><td class="td-cmd">curl ifconfig.me</td><td class="td-desc">Show your public IP address</td></tr>
+        <tr><td class="td-cmd">netstat -tuln</td><td class="td-desc">Show all open ports</td></tr>
+        <tr><td class="td-cmd">nmap 192.168.1.0/24</td><td class="td-desc">Scan all devices on your network</td></tr>
+        <tr><td class="td-cmd">iwconfig wlan0</td><td class="td-desc">Wi-Fi interface info (signal strength etc.)</td></tr>
+      </table>
+    </div>
+
+    <!-- Packages -->
+    <div class="guide-section" id="gs-os-packages">
+      <div class="guide-h1">📦 Installing Software on Pi OS</div>
+      <div class="guide-sub">Pi OS uses apt (Advanced Package Tool) for system packages, plus npm for Node.js tools.</div>
+
+      <div class="guide-h2">apt — System Packages</div>
+      <div class="code-block">
+        <div class="code-lang">bash</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># Always update first</span>
+<span class="cmd">sudo apt update</span>
+
+<span class="comment"># Install a package</span>
+<span class="cmd">sudo apt install -y package-name</span>
+
+<span class="comment"># Remove a package</span>
+<span class="cmd">sudo apt remove package-name</span>
+
+<span class="comment"># Search for packages</span>
+<span class="cmd">apt search keyword</span>
+
+<span class="comment"># Show package info</span>
+<span class="cmd">apt show package-name</span>
+
+<span class="comment"># Upgrade all installed packages</span>
+<span class="cmd">sudo apt update && sudo apt upgrade -y</span>
+
+<span class="comment"># Remove unused packages</span>
+<span class="cmd">sudo apt autoremove -y</span></pre>
+      </div>
+
+      <div class="guide-h2">Useful Packages to Install</div>
+      <div class="code-block">
+        <div class="code-lang">bash</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="cmd">sudo apt install -y \
+  git curl wget             \</span> <span class="comment"># essential tools</span>
+<span class="cmd">  htop ncdu tree            \</span> <span class="comment"># monitoring</span>
+<span class="cmd">  ufw fail2ban              \</span> <span class="comment"># security</span>
+<span class="cmd">  nginx                     \</span> <span class="comment"># web server</span>
+<span class="cmd">  python3 python3-pip       \</span> <span class="comment"># Python</span>
+<span class="cmd">  jq                        \</span> <span class="comment"># JSON processor (super useful)</span>
+<span class="cmd">  tmux screen               \</span> <span class="comment"># terminal multiplexers</span>
+<span class="cmd">  neofetch</span>                    <span class="comment"># pretty system info</span></pre>
+      </div>
+    </div>
+
+    <!-- Network -->
+    <div class="guide-section" id="gs-os-network">
+      <div class="guide-h1">🌐 Networking on Pi OS</div>
+      <div class="guide-sub">Static IPs, Wi-Fi config, and making your Pi always reachable on the network.</div>
+
+      <div class="guide-h2">Set a Static IP (Recommended)</div>
+      <div class="guide-tip">💡 A static IP means your Pi is always at the same address — no need to check your router every time.</div>
+      <div class="code-block">
+        <div class="code-lang">bash</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># Edit dhcpcd config</span>
+<span class="cmd">sudo nano /etc/dhcpcd.conf</span>
+<span class="comment"># Add these lines at the bottom (adjust to your network):</span>
+<span class="str">interface eth0
+static ip_address=192.168.1.100/24
+static routers=192.168.1.1
+static domain_name_servers=1.1.1.1 8.8.8.8</span>
+
+<span class="comment"># Restart networking</span>
+<span class="cmd">sudo systemctl restart dhcpcd</span>
+<span class="cmd">hostname -I</span>  <span class="comment"># Confirm new IP</span></pre>
+      </div>
+
+      <div class="guide-h2">Configure Wi-Fi via CLI</div>
+      <div class="code-block">
+        <div class="code-lang">bash</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="cmd">sudo nano /etc/wpa_supplicant/wpa_supplicant.conf</span>
+<span class="comment"># Add network block:</span>
+<span class="str">network={
+    ssid="YourWiFiName"
+    psk="YourPassword"
+    priority=1
+}</span>
+<span class="cmd">sudo wpa_cli -i wlan0 reconfigure</span></pre>
+      </div>
+    </div>
+
+    <!-- Services & PM2 -->
+    <div class="guide-section" id="gs-os-services">
+      <div class="guide-h1">⚙️ Services & PM2</div>
+      <div class="guide-sub">Keep your dashboard and n8n running permanently with PM2.</div>
+
+      <div class="guide-h2">PM2 — Process Manager for Node.js</div>
+      <div class="code-block">
+        <div class="code-lang">bash</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># Start your dashboard server</span>
+<span class="cmd">cd ~/pi-dashboard
+pm2 start server.js --name pi-dashboard</span>
+
+<span class="comment"># View running processes</span>
+<span class="cmd">pm2 list</span>
+
+<span class="comment"># Watch live logs</span>
+<span class="cmd">pm2 logs pi-dashboard</span>
+
+<span class="comment"># Restart / Stop / Delete</span>
+<span class="cmd">pm2 restart pi-dashboard
+pm2 stop pi-dashboard
+pm2 delete pi-dashboard</span>
+
+<span class="comment"># Auto-start on boot (run these once)</span>
+<span class="cmd">pm2 startup
+pm2 save</span></pre>
+      </div>
+
+      <div class="guide-h2">systemd Services (Alternative)</div>
+      <div class="code-block">
+        <div class="code-lang">bash</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># Create a systemd service file</span>
+<span class="cmd">sudo nano /etc/systemd/system/pi-dashboard.service</span>
+
+<span class="comment"># Paste this content:</span>
+<span class="str">[Unit]
+Description=Pi Dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/pi-dashboard
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=5
+Environment=NODE_ENV=production PORT=3001
+
+[Install]
+WantedBy=multi-user.target</span>
+
+<span class="comment"># Enable and start the service</span>
+<span class="cmd">sudo systemctl daemon-reload
+sudo systemctl enable pi-dashboard
+sudo systemctl start pi-dashboard
+sudo systemctl status pi-dashboard</span></pre>
+      </div>
+    </div>
+
+    <!-- n8n Install -->
+    <div class="guide-section" id="gs-n8n-install">
+      <div class="guide-h1">⚡ Install n8n on Pi 5</div>
+      <div class="guide-sub">Self-host the most powerful open-source workflow automation tool on your Raspberry Pi 5.</div>
+
+      <div class="guide-h2">Method 1: Docker (Recommended)</div>
+      <div class="guide-tip">💡 Docker keeps n8n isolated and easy to update. This is the best method for Pi 5.</div>
+      <div class="code-block">
+        <div class="code-lang">bash</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># Create data directory</span>
+<span class="cmd">mkdir -p ~/n8n-data</span>
+
+<span class="comment"># Run n8n container</span>
+<span class="cmd">docker run -d \
+  --name n8n \
+  --restart unless-stopped \
+  -p 5678:5678 \
+  -v ~/n8n-data:/home/node/.n8n \
+  -e N8N_BASIC_AUTH_ACTIVE=true \
+  -e N8N_BASIC_AUTH_USER=admin \
+  -e N8N_BASIC_AUTH_PASSWORD=your_secure_password \
+  -e N8N_HOST=0.0.0.0 \
+  -e WEBHOOK_URL=http://192.168.1.100:5678 \
+  -e GENERIC_TIMEZONE="Europe/London" \
+  docker.n8n.io/n8nio/n8n</span>
+
+<span class="comment"># Check it's running</span>
+<span class="cmd">docker ps
+docker logs n8n</span>
+
+<span class="comment"># Open n8n in browser:</span>
+<span class="comment"># http://YOUR_PI_IP:5678</span></pre>
+      </div>
+
+      <div class="guide-h2">Method 2: npm (Direct)</div>
+      <div class="code-block">
+        <div class="code-lang">bash</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># Install n8n globally</span>
+<span class="cmd">npm install -g n8n</span>
+
+<span class="comment"># Start n8n (runs on port 5678)</span>
+<span class="cmd">n8n start</span>
+
+<span class="comment"># Or with PM2 for auto-restart</span>
+<span class="cmd">pm2 start n8n --name n8n -- start
+pm2 save</span></pre>
+      </div>
+
+      <div class="guide-h2">Update n8n</div>
+      <div class="code-block">
+        <div class="code-lang">bash</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># Docker method</span>
+<span class="cmd">docker pull docker.n8n.io/n8nio/n8n
+docker stop n8n && docker rm n8n
+</span><span class="comment"># Then re-run the docker run command above</span>
+
+<span class="comment"># npm method</span>
+<span class="cmd">npm update -g n8n</span></pre>
+      </div>
+    </div>
+
+    <!-- n8n Workflows -->
+    <div class="guide-section" id="gs-n8n-workflows">
+      <div class="guide-h1">🔗 Creating n8n Workflows</div>
+      <div class="guide-sub">Step-by-step guide to building your first automation workflows in n8n.</div>
+
+      <div class="guide-h2">Understanding the n8n Editor</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">Open n8n at http://YOUR_PI_IP:5678</div><div class="step-desc">Log in with your admin credentials. You'll see the workflow canvas — a blank space where you drag and connect nodes.</div></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">Click "+ Add first step" or the "+" button</div><div class="step-desc">This opens the node picker. Search for any service or trigger type. n8n has 400+ integrations built in.</div></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">Choose a Trigger node</div><div class="step-desc">Every workflow starts with a trigger. Common ones: Webhook (HTTP request), Schedule (cron), Manual (button click). The trigger is what starts your workflow.</div></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><div class="step-title">Connect Action nodes</div><div class="step-desc">After the trigger, add action nodes that do things: send a Discord message, call an API, write to a database, send an email. Connect them by dragging the output dot to the next node's input.</div></div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-body"><div class="step-title">Test with "Execute Workflow"</div><div class="step-desc">Click the ▶ button to run the workflow once and see the data flowing through each node. Green checkmarks = success. Click any node to see its input/output data.</div></div></div>
+        <div class="step"><div class="step-num">6</div><div class="step-body"><div class="step-title">Activate the Workflow</div><div class="step-desc">Toggle the "Active" switch in the top right. Now n8n will run this automatically whenever the trigger fires — even if you close the browser.</div></div></div>
+      </div>
+
+      <div class="guide-h2">Your First Workflow: CPU Alert to Discord</div>
+      <div class="code-block">
+        <div class="code-lang">n8n</div>
+        <pre><span class="comment">Nodes to add in order:</span>
+
+<span class="kw">1. Schedule Trigger</span>
+   Mode: Every X minutes
+   Minutes: 5
+
+<span class="kw">2. HTTP Request</span> (call your dashboard API)
+   URL: http://localhost:3001/api/system
+   Method: GET
+
+<span class="kw">3. IF node</span> (check if CPU is high)
+   Condition: {{ $json.cpu }} > 80
+   True branch → go to step 4
+   False branch → do nothing (no node)
+
+<span class="kw">4. Discord node</span>
+   Resource: Message
+   Operation: Send
+   Webhook URL: (paste from Discord server settings)
+   Content: <span class="str">🚨 Pi Alert! CPU is at {{ $('HTTP Request').item.json.cpu }}%
+   Temp: {{ $('HTTP Request').item.json.temp }}°C
+   Uptime: {{ $('HTTP Request').item.json.uptime }}</span></pre>
+      </div>
+
+      <div class="guide-h2">Getting a Discord Webhook URL</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">Open your Discord server settings</div><div class="step-desc">Right-click your server name → Server Settings → Integrations → Webhooks → New Webhook</div></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">Choose a channel and copy the Webhook URL</div><div class="step-desc">Select the channel where alerts should appear. Click "Copy Webhook URL". This is what you paste into the n8n Discord node.</div></div></div>
+      </div>
+    </div>
+
+    <!-- n8n Templates -->
+    <div class="guide-section" id="gs-n8n-templates">
+      <div class="guide-h1">📋 Workflow Templates</div>
+      <div class="guide-sub">Ready-to-use workflow blueprints for common automations on your Pi 5.</div>
+
+      <div class="guide-h2">Available Templates</div>
+      <div class="workflow-cards">
+        <div class="wf-card"><div class="wf-card-icon">💬</div><div class="wf-card-name">Discord System Alerts</div><div class="wf-card-desc">Monitor CPU/temp/RAM every 5 min. Alert Discord if thresholds exceeded.</div></div>
+        <div class="wf-card"><div class="wf-card-icon">🐙</div><div class="wf-card-name">GitHub PR Watcher</div><div class="wf-card-desc">Poll GitHub API, notify on new PRs, issues, or CI failures via Telegram.</div></div>
+        <div class="wf-card"><div class="wf-card-icon">🏠</div><div class="wf-card-name">Home Assistant Bridge</div><div class="wf-card-desc">Push Pi metrics to Home Assistant via MQTT every minute.</div></div>
+        <div class="wf-card"><div class="wf-card-icon">📰</div><div class="wf-card-name">Daily RSS Digest</div><div class="wf-card-desc">Fetch HN + Dev.to top posts at 8am, email a curated digest.</div></div>
+        <div class="wf-card"><div class="wf-card-icon">💾</div><div class="wf-card-name">Nightly Backup</div><div class="wf-card-desc">Back up Pi config + n8n workflows to GitHub Gist at 2am daily.</div></div>
+        <div class="wf-card"><div class="wf-card-icon">📊</div><div class="wf-card-name">Uptime Monitor</div><div class="wf-card-desc">Ping your services every minute, log to Google Sheets, alert on downtime.</div></div>
+      </div>
+
+      <div class="guide-h2">Import a Template</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">In n8n: Go to Templates</div><div class="step-desc">Click "Templates" in the left sidebar or visit n8n.io/workflows to browse 1000+ community workflows.</div></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">Click "Use for free" on any template</div><div class="step-desc">n8n will open the workflow in your instance automatically. You just need to add your credentials (API keys, tokens).</div></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">Or import a JSON file</div><div class="step-desc">In n8n editor: top-right menu (⋮) → Import from file → select a .json workflow file. We include JSON files for all the templates above in the /workflows folder.</div></div></div>
+      </div>
+    </div>
+
+    <!-- n8n Integrations -->
+    <div class="guide-section" id="gs-n8n-integrate">
+      <div class="guide-h1">🔌 n8n Integrations</div>
+      <div class="guide-sub">Connect n8n to external services. Most need an API key or OAuth — here's where to get them.</div>
+
+      <div class="guide-h2">Setting Up Credentials in n8n</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">Go to Credentials (key icon in left sidebar)</div><div class="step-desc">This is where all your API keys, tokens, and passwords are stored securely in n8n's encrypted database.</div></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">Click "+ Add credential"</div><div class="step-desc">Search for the service (e.g. "Discord", "GitHub", "Gmail"). n8n shows you exactly what fields you need and links to the docs.</div></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">Paste your API key / token</div><div class="step-desc">Credentials are stored once and reused across all workflows. Update them in one place and all workflows update automatically.</div></div></div>
+      </div>
+
+      <div class="guide-h2">Quick API Key Locations</div>
+      <table class="cmd-table">
+        <tr><th>Service</th><th>Where to get the API key</th></tr>
+        <tr><td class="td-cmd">GitHub</td><td class="td-desc">github.com/settings/tokens → Generate new token (classic) → check repo + user scopes</td></tr>
+        <tr><td class="td-cmd">Discord</td><td class="td-desc">discord.com/developers/applications → New App → Bot → Token. Or use Server Settings → Webhooks for simpler use.</td></tr>
+        <tr><td class="td-cmd">Telegram</td><td class="td-desc">Message @BotFather on Telegram → /newbot → copy the token</td></tr>
+        <tr><td class="td-cmd">OpenWeatherMap</td><td class="td-desc">openweathermap.org/api → Sign up free → API Keys tab</td></tr>
+        <tr><td class="td-cmd">Notion</td><td class="td-desc">notion.so/my-integrations → New integration → copy token → share DB with integration</td></tr>
+        <tr><td class="td-cmd">Gmail</td><td class="td-desc">n8n supports OAuth2 — click "Connect with Google" in n8n credentials, follow the OAuth flow</td></tr>
+        <tr><td class="td-cmd">Slack</td><td class="td-desc">api.slack.com/apps → New App → OAuth & Permissions → Bot Token → copy Bot User OAuth Token</td></tr>
+      </table>
+    </div>
+
+    <!-- Deploy Dashboard -->
+    <div class="guide-section" id="gs-dash-deploy">
+      <div class="guide-h1">📡 Deploy the Dashboard on Pi</div>
+      <div class="guide-sub">Get the dashboard running on your Pi 5 and accessible from any device on your network.</div>
+
+      <div class="guide-h2">Quick Deploy (1 command)</div>
+      <div class="code-block">
+        <div class="code-lang">bash</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># Clone the repo on your Pi</span>
+<span class="cmd">git clone https://github.com/YOUR_USERNAME/pi-dashboard.git
+cd pi-dashboard</span>
+
+<span class="comment"># Copy and edit config</span>
+<span class="cmd">cp .env.example .env
+nano .env</span>
+
+<span class="comment"># Install and start</span>
+<span class="cmd">npm install
+npm start</span>
+
+<span class="comment"># Dashboard is now at:</span>
+<span class="comment"># http://localhost:3001  (on the Pi)</span>
+<span class="comment"># http://YOUR_PI_IP:3001  (from any device)</span></pre>
+      </div>
+
+      <div class="guide-h2">Production Deploy with PM2</div>
+      <div class="code-block">
+        <div class="code-lang">bash</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="cmd">NODE_ENV=production pm2 start server.js --name pi-dashboard
+pm2 startup
+pm2 save</span>
+
+<span class="comment"># Check status</span>
+<span class="cmd">pm2 status
+pm2 logs pi-dashboard</span></pre>
+      </div>
+    </div>
+
+    <!-- Config -->
+    <div class="guide-section" id="gs-dash-config">
+      <div class="guide-h1">🎛 Dashboard Configuration</div>
+      <div class="guide-sub">Personalise the dashboard with your own data, API keys, and settings.</div>
+
+      <div class="guide-h2">Environment Variables (.env)</div>
+      <div class="code-block">
+        <div class="code-lang">env</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># GitHub — required for GitHub widget</span>
+<span class="str">REACT_APP_GITHUB_USERNAME</span>=your_username
+<span class="str">REACT_APP_GITHUB_TOKEN</span>=ghp_xxxx
+
+<span class="comment"># Weather — free key from openweathermap.org</span>
+<span class="str">REACT_APP_WEATHER_KEY</span>=your_key
+<span class="str">REACT_APP_WEATHER_CITY</span>=London
+
+<span class="comment"># Notion tasks — optional</span>
+<span class="str">REACT_APP_NOTION_TOKEN</span>=secret_xxx
+<span class="str">REACT_APP_NOTION_DB_ID</span>=your_db_id
+
+<span class="comment"># n8n — your Pi's IP + port</span>
+<span class="str">N8N_URL</span>=http://192.168.1.100:5678
+<span class="str">N8N_API_KEY</span>=your_n8n_api_key
+
+<span class="comment"># Server</span>
+<span class="str">PORT</span>=3001</pre>
+      </div>
+    </div>
+
+    <!-- Push to GitHub -->
+    <div class="guide-section" id="gs-dash-github">
+      <div class="guide-h1">🐙 Push to GitHub</div>
+      <div class="guide-sub">Get your dashboard on GitHub for version control and portfolio display.</div>
+
+      <div class="guide-h2">First Push</div>
+      <div class="code-block">
+        <div class="code-lang">bash</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="comment"># 1. Create repo at github.com/new (set to Public)</span>
+<span class="comment"># 2. In your pi-dashboard folder:</span>
+
+<span class="cmd">git init
+git add .
+git commit -m "feat: Pi5 command dashboard with n8n hub"
+git remote add origin https://github.com/YOUR_USERNAME/pi-dashboard.git
+git branch -M main
+git push -u origin main</span></pre>
+      </div>
+
+      <div class="guide-h2">Enable GitHub Pages (Live Demo)</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">Go to repo Settings → Pages</div><div class="step-desc">Navigate to your repo on GitHub → Settings tab → Pages in the left sidebar.</div></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">Set source to "Deploy from branch" → main → /public</div><div class="step-desc">This serves your public/index.html as a live website at https://YOUR_USERNAME.github.io/pi-dashboard</div></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">Add the Pages URL to your portfolio</div><div class="step-desc">Screenshot the live dashboard (looks incredible on a wide monitor) and link both the live demo and GitHub repo in your portfolio.</div></div></div>
+      </div>
+
+      <div class="guide-h2">Updating the Repo</div>
+      <div class="code-block">
+        <div class="code-lang">bash</div>
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><span class="cmd">git add .
+git commit -m "feat: describe what you changed"
+git push</span></pre>
+      </div>
+    </div>
+
+  </div><!-- /guide-content -->
+</div><!-- /guide-layout -->
+</div><!-- /page-guide -->
+
+</div><!-- /main -->
+</div><!-- /shell -->
+
+<!-- ═══════════ ADD APP MODAL ═══════════ -->
+<div class="modal-bg" id="add-modal">
+<div class="modal">
+  <button class="modal-x" onclick="N8N.closeModal()">✕</button>
+  <div class="modal-title">⚡ Add Workflow</div>
+  <div class="modal-sub">Add an n8n app or workflow to your hub</div>
+
+  <div class="form-label">Quick Templates</div>
+  <div class="tpl-chips" id="modal-tpl-chips"></div>
+
+  <div class="form-row">
+    <div><label class="form-label">App Name *</label><input class="form-input" id="f-name" placeholder="Discord Notifier" type="text"/></div>
+    <div><label class="form-label">Icon (emoji)</label><input class="form-input" id="f-icon" placeholder="💬" maxlength="2" type="text"/></div>
+  </div>
+  <div class="form-row">
+    <div><label class="form-label">Category</label>
+      <select class="form-select" id="f-cat"><option>Notifications</option><option>Monitoring</option><option>Automation</option><option>IoT / Smart Home</option><option>DevOps</option><option>Data & Analytics</option><option>Custom</option></select>
+    </div>
+    <div><label class="form-label">Accent Color</label>
+      <select class="form-select" id="f-accent"><option value="blue">Blue</option><option value="green">Green</option><option value="red">Red</option><option value="orange">Orange</option><option value="purple">Purple</option><option value="cyan">Cyan</option></select>
+    </div>
+  </div>
+  <label class="form-label">Webhook / URL</label>
+  <input class="form-input" id="f-url" placeholder="http://localhost:5678/webhook/..." type="text"/>
+  <div class="form-row">
+    <div><label class="form-label">Trigger</label>
+      <select class="form-select" id="f-trigger"><option>Webhook</option><option>Schedule (Cron)</option><option>Manual</option><option>Event-based</option><option>MQTT</option><option>RSS Feed</option></select>
+    </div>
+    <div><label class="form-label">Status</label>
+      <select class="form-select" id="f-status"><option value="running">Running</option><option value="paused">Paused</option><option value="stopped">Stopped</option></select>
+    </div>
+  </div>
+  <label class="form-label">Description</label>
+  <textarea class="form-textarea" id="f-desc" placeholder="What does this workflow do?"></textarea>
+
+  <div class="modal-btns">
+    <button class="mbtn-cancel" onclick="N8N.closeModal()">Cancel</button>
+    <button class="mbtn-ok" onclick="N8N.addApp()">⚡ Add Workflow</button>
+  </div>
+</div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"><span class="toast-icon" id="toast-icon">✅</span><span id="toast-msg">Done</span></div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════
+// CONFIG — edit these to match your setup
+// ═══════════════════════════════════════════════════
+const CFG = {
+  githubUser: 'YOUR_GITHUB_USERNAME',
+  githubToken: '',
+  weatherKey: '',
+  weatherCity: 'San Francisco',
+  n8nUrl: 'http://localhost:5678',
+  apiBase: window.location.hostname !== 'localhost' ? `http://${window.location.hostname}:3001` : 'http://localhost:3001',
+};
+
+// ═══════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2,'0');
+const fmt = n => n >= 1000 ? `${(n/1000).toFixed(1)}k` : String(n);
+
+function toast(msg, icon='✅', ms=2800) {
+  const t=$('toast'); $('toast-msg').textContent=msg; $('toast-icon').textContent=icon;
+  t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),ms);
+}
+
+function copyCode(btn) {
+  const pre = btn.closest('.code-block').querySelector('pre');
+  navigator.clipboard.writeText(pre.textContent.replace(/\s+/g,' ').trim()).then(()=>{
+    btn.textContent='Copied!'; btn.classList.add('copied');
+    setTimeout(()=>{btn.textContent='Copy'; btn.classList.remove('copied')}, 2000);
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// PAGE MANAGER
+// ═══════════════════════════════════════════════════
+const Page = {
+  show(id, btn) {
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
+    $('page-'+id).classList.add('active');
+    btn.classList.add('active');
+    if (id==='n8n') N8N.render();
+    if (id==='terminal') Term.init();
+  }
+};
+
+// ═══════════════════════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════════════════════
+const Clock = {
+  DAYS: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+  MONTHS: ['January','February','March','April','May','June','July','August','September','October','November','December'],
+  tick() {
+    const n=new Date();
+    $('cl-h').textContent=pad(n.getHours());
+    $('cl-m').textContent=pad(n.getMinutes());
+    $('cl-s').textContent=pad(n.getSeconds());
+    $('hdr-clock').textContent=`${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`;
+    $('cl-date').textContent=`${this.DAYS[n.getDay()]}, ${this.MONTHS[n.getMonth()]} ${n.getDate()} ${n.getFullYear()}`;
+    const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+    $('cl-tz').textContent=tz;
+    const short=tz.split('/').pop().replace('_',' ');
+    $('tz-badge').textContent=short;
+  },
+  init() { this.tick(); setInterval(()=>this.tick(),1000); }
+};
+
+// ═══════════════════════════════════════════════════
+// UPTIME COUNTER
+// ═══════════════════════════════════════════════════
+let _uptimeSecs = 14*86400+2*3600+17*60;
+setInterval(()=>{
+  _uptimeSecs++;
+  const d=Math.floor(_uptimeSecs/86400),h=Math.floor((_uptimeSecs%86400)/3600),m=Math.floor((_uptimeSecs%3600)/60),s=_uptimeSecs%60;
+  $('hdr-uptime').textContent=`ONLINE · ${d}d ${pad(h)}h ${pad(m)}m ${pad(s)}s UPTIME`;
+},1000);
+
+// ═══════════════════════════════════════════════════
+// GAUGE ENGINE
+// ═══════════════════════════════════════════════════
+const CIRC = 2*Math.PI*37; // r=37
+
+function setGauge(id, pct) {
+  const el=$(id); if(!el) return;
+  el.style.strokeDasharray=`${(Math.min(pct,100)/100*CIRC).toFixed(2)} ${CIRC.toFixed(2)}`;
+}
+
+// ═══════════════════════════════════════════════════
+// API — fetch real stats from server.js
+// ═══════════════════════════════════════════════════
+const API = {
+  async fetchSystem() {
+    try {
+      const r = await fetch(`${CFG.apiBase}/api/system`,{signal:AbortSignal.timeout(3000)});
+      if (!r.ok) throw new Error();
+      return await r.json();
+    } catch { return null; }
+  },
+
+  async fetchTasks() {
+    try {
+      const r = await fetch(`${CFG.apiBase}/api/tasks`,{signal:AbortSignal.timeout(3000)});
+      if (!r.ok) throw new Error();
+      return await r.json();
+    } catch { return null; }
+  },
+
+  async fetchGitHub() {
+    if (!CFG.githubUser || CFG.githubUser==='YOUR_GITHUB_USERNAME') return null;
+    const h=CFG.githubToken?{Authorization:`token ${CFG.githubToken}`}:{};
+    try {
+      const [u,r]=await Promise.all([
+        fetch(`https://api.github.com/users/${CFG.githubUser}`,{headers:h}),
+        fetch(`https://api.github.com/users/${CFG.githubUser}/repos?sort=updated&per_page=10`,{headers:h}),
+      ]);
+      const user=await u.json(), repos=await r.json();
+      return {user,repos:Array.isArray(repos)?repos:[]};
+    } catch { return null; }
+  },
+
+  async fetchCommits() {
+    if (!CFG.githubUser || CFG.githubUser==='YOUR_GITHUB_USERNAME') return null;
+    const h=CFG.githubToken?{Authorization:`token ${CFG.githubToken}`}:{};
+    try {
+      const r=await fetch(`https://api.github.com/users/${CFG.githubUser}/events/public?per_page=30`,{headers:h});
+      const events=await r.json();
+      if (!Array.isArray(events)) return null;
+      const commits=[];
+      for (const ev of events.filter(e=>e.type==='PushEvent')) {
+        for (const c of (ev.payload.commits||[])) {
+          commits.push({sha:c.sha.slice(0,7),msg:c.message.split('\n')[0],repo:ev.repo.name.split('/')[1],date:ev.created_at});
+          if (commits.length>=6) return commits;
+        }
+      }
+      return commits;
+    } catch { return null; }
+  },
+
+  async fetchWeather() {
+    if (!CFG.weatherKey) return null;
+    try {
+      const r=await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(CFG.weatherCity)}&appid=${CFG.weatherKey}&units=metric`);
+      if (!r.ok) throw new Error();
+      return await r.json();
+    } catch { return null; }
+  },
+
+  async refresh() {
+    toast('Refreshing data...','↻',1500);
+    await Promise.all([Dashboard.loadSystem(), Dashboard.loadGitHub(), Dashboard.loadWeather()]);
+    toast('Data updated','✅');
+  }
+};
+
+// ═══════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════
+const WEATHER_ICONS={'01d':'☀️','01n':'🌙','02d':'⛅','02n':'🌑','03d':'☁️','03n':'☁️','04d':'☁️','04n':'☁️','09d':'🌧️','09n':'🌧️','10d':'🌦️','10n':'🌧️','11d':'⛈️','11n':'⛈️','13d':'❄️','13n':'❄️','50d':'🌫️','50n':'🌫️'};
+
+const Dashboard = {
+  _cpu:24, _ram:52, _temp:42, _sparkPts:[],
+
+  async loadSystem() {
+    const data = await API.fetchSystem();
+    if (data) {
+      this._cpu=data.cpu; this._ram=data.ram?.pct||52; this._temp=data.temp;
+      $('hdr-hostname').textContent=data.hostname||'raspberrypi';
+      $('term-title').textContent=`pi@${data.hostname||'raspberrypi'}:~ — bash`;
+      $('term-prompt').textContent=`pi@${data.hostname||'raspberrypi'}:~$`;
+      if (data.ip) $('net-ip').textContent=data.ip;
+      $('vv-disk').innerHTML=`${data.disk?.usedGB||'—'}<span style="font-size:9px;font-weight:400;color:var(--text-dim)">GB</span>`;
+      $('vp-disk').style.width=(data.disk?.pct||46)+'%';
+      $('vs-disk').textContent=`${data.disk?.pct||46}% of ${data.disk?.totalGB||256}GB`;
+    } else {
+      // Simulate realistic drift for demo
+      this._cpu=Math.max(5,Math.min(92,this._cpu+(Math.random()-.45)*10));
+      this._ram=Math.max(32,Math.min(84,this._ram+(Math.random()-.5)*3));
+      this._temp=Math.max(38,Math.min(74,this._temp+(Math.random()-.5)*1.5));
+    }
+    this.updateGauges();
+  },
+
+  updateGauges() {
+    const cpu=Math.round(this._cpu), ram=this._ram, temp=Math.round(this._temp);
+    $('gv-cpu').textContent=cpu+'%';
+    $('gv-ram').textContent=(ram*8/100).toFixed(1)+'GB';
+    $('gs-ram').textContent=Math.round(ram)+'% used';
+    $('gv-temp').textContent=temp+'°C';
+    setGauge('g-cpu',cpu); setGauge('g-ram',ram); setGauge('g-temp',(temp/80)*100);
+
+    // Dynamic temp color
+    const tc=$('gv-temp');
+    tc.style.color=temp>65?'var(--red)':temp>55?'var(--orange)':'var(--green)';
+    $('g-temp').style.stroke=temp>65?'var(--red)':temp>55?'var(--orange)':'var(--orange)';
+
+    // Status badge
+    const sb=$('vitals-badge');
+    if(cpu>80){sb.textContent='⚠ High';sb.className='badge badge-red';}
+    else if(cpu>60){sb.textContent='● Moderate';sb.className='badge badge-yellow';}
+    else{sb.textContent='● Normal';sb.className='badge badge-green';}
+
+    // Network sim
+    const nd=Math.round(80+Math.random()*120), nu=Math.round(15+Math.random()*55);
+    const ndf=nd>100?`${(nd/100).toFixed(1)}k`:`${nd}`;
+    $('vv-dl').innerHTML=ndf+'<span style="font-size:9px;font-weight:400;color:var(--text-dim)">MB/s</span>';
+    $('vv-ul').innerHTML=nu+'<span style="font-size:9px;font-weight:400;color:var(--text-dim)">MB/s</span>';
+    $('vp-dl').style.width=Math.min(100,nd/2)+'%';
+    $('vp-ul').style.width=Math.min(100,nu)+'%';
+    $('net-dl').innerHTML=`${nd}<span style="font-size:10px;color:var(--text-dim)"> MB/s</span>`;
+    $('net-ul').innerHTML=`${nu}<span style="font-size:10px;color:var(--text-dim)"> MB/s</span>`;
+
+    // Load avg
+    const load=(0.1+Math.random()*.9).toFixed(2);
+    $('vv-load').textContent=load;
+    $('vp-load').style.width=Math.min(100,parseFloat(load)/4*100)+'%';
+
+    // Sparkline
+    this._sparkPts.push(Math.random()*32+2);
+    if(this._sparkPts.length>13) this._sparkPts.shift();
+    const pts=this._sparkPts.map((y,i)=>`${(i*(155/12)).toFixed(0)},${y.toFixed(1)}`).join(' L ');
+    $('spark').setAttribute('d','M '+pts);
+    $('spark-fill').setAttribute('d','M '+pts+' V36 H0Z');
+
+    // Fan sim
+    $('gs-fan').textContent=Math.round(900+temp*8);
+
+    // Ping sim
+    const ping=Math.round(2+Math.random()*8);
+    $('net-ping').textContent=ping+' ms';
+    $('net-ping').style.color=ping>15?'var(--yellow)':'var(--green)';
+  },
+
+  async loadGitHub() {
+    const data = await API.fetchGitHub();
+    if (!data) {
+      // Demo state
+      $('gh-name').textContent='Your Name';
+      $('gh-user').textContent='@'+CFG.githubUser;
+      $('gh-repos').textContent='48';
+      $('gh-followers').textContent='892';
+      $('gh-stars').textContent='2.4k';
+      $('gh-link').onclick=()=>window.open(`https://github.com/${CFG.githubUser}`,'_blank');
+    } else {
+      const u=data.user;
+      $('gh-ava').textContent=u.name?u.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase():u.login.slice(0,2).toUpperCase();
+      $('gh-name').textContent=u.name||u.login;
+      $('gh-user').textContent='@'+u.login;
+      $('gh-repos').textContent=fmt(u.public_repos||0);
+      $('gh-followers').textContent=fmt(u.followers||0);
+      const stars=data.repos.reduce((a,r)=>a+r.stargazers_count,0);
+      $('gh-stars').textContent=fmt(stars);
+      $('gh-link').onclick=()=>window.open(u.html_url,'_blank');
+    }
+    this.buildContribs();
+
+    // Commits
+    const commits = await API.fetchCommits();
+    this.renderCommits(commits);
+  },
+
+  buildContribs() {
+    const grid=$('contrib-grid'); if(!grid) return;
+    const lvl=[0,0,0,0,1,1,2,2,3,4];
+    const data=Array.from({length:7*26},()=>lvl[Math.floor(Math.random()*lvl.length)]);
+    for(let i=data.length-49;i<data.length;i++) data[i]=Math.min(4,data[i]+Math.floor(Math.random()*2));
+    const total=data.reduce((a,v)=>a+v,0);
+    $('contrib-total').textContent=total.toLocaleString()+' this yr';
+    grid.innerHTML=data.map(v=>`<div class="cc cc${v}" title="${v} contribution${v!==1?'s':''}"></div>`).join('');
+  },
+
+  renderCommits(commits) {
+    const DOTS={0:'var(--blue)',1:'var(--green)',2:'var(--orange)',3:'var(--purple)',4:'var(--cyan)',5:'var(--red)'};
+    const demo=[
+      {sha:'a3f9d12',msg:'feat: add n8n automation hub with app management',repo:'pi-dashboard',date:new Date(Date.now()-7200000).toISOString()},
+      {sha:'b8e2c01',msg:'fix: handle websocket reconnect timeout edge case',repo:'core-api',date:new Date(Date.now()-18000000).toISOString()},
+      {sha:'c7d4a55',msg:'chore: update tailwind config, add custom colors',repo:'pi-dashboard',date:new Date(Date.now()-86400000).toISOString()},
+      {sha:'d1b9f33',msg:'feat: add real /api/system endpoint for Pi stats',repo:'pi-dashboard',date:new Date(Date.now()-172800000).toISOString()},
+    ];
+    const list=commits||demo;
+    $('commit-list').innerHTML=list.map((c,i)=>{
+      const ago=this.timeAgo(new Date(c.date));
+      const col=DOTS[i%6];
+      return `<div class="ci">
+        <div class="ci-dot" style="color:${col};background:${col}"></div>
+        <div class="ci-body">
+          <div class="ci-top"><span class="ci-repo badge badge-blue">${c.repo||'repo'}</span><span class="ci-time">${ago}</span></div>
+          <div class="ci-msg">${c.msg}</div>
+          <div class="ci-sha">${c.sha} · main</div>
+        </div></div>`;
+    }).join('');
+  },
+
+  timeAgo(date) {
+    const s=Math.floor((Date.now()-date.getTime())/1000);
+    if(s<60) return 'just now';
+    if(s<3600) return Math.floor(s/60)+'m ago';
+    if(s<86400) return Math.floor(s/3600)+'h ago';
+    return Math.floor(s/86400)+'d ago';
+  },
+
+  async loadWeather() {
+    const data = await API.fetchWeather();
+    if (!data) return; // keep demo
+    $('w-temp').innerHTML=`${Math.round(data.main.temp)}<sup>°C</sup>`;
+    $('w-desc').textContent=data.weather[0].description;
+    $('w-loc').textContent=`📍 ${data.name}`;
+    $('w-icon').textContent=WEATHER_ICONS[data.weather[0].icon]||'🌤️';
+    $('weather-badge').textContent='Live';
+  },
+
+  async loadTasks() {
+    const data = await API.fetchTasks();
+    const tasks = data || [
+      {id:1,text:'Review PR #421',done:true,priority:'high',source:'Notion'},
+      {id:2,text:'Pi5 Fan Speed Adjustment',done:false,priority:'med',source:'System'},
+      {id:3,text:'Backup Home Assistant DB',done:false,priority:'med',source:'Notion'},
+      {id:4,text:'Weekly Sprint Planning',done:false,priority:'low',source:'Calendar'},
+      {id:5,text:'Update dashboard README',done:false,priority:'low',source:'GitHub'},
+    ];
+    $('task-source').textContent=data?'Source: Notion':'Source: demo (add Notion token)';
+    this.renderTasks(tasks);
+  },
+
+  renderTasks(tasks) {
+    const PRI={high:'badge-red phi',med:'badge-yellow pmd',low:'badge-green plo'};
+    const LAB={high:'HI',med:'MD',low:'LO'};
+    $('task-list').innerHTML=tasks.map(t=>`
+      <div class="ti ${t.done?'done':''}" onclick="Dashboard.toggleTask(${t.id},this)">
+        <div class="ti-cb"><span class="ti-chk">✓</span></div>
+        <div><div class="ti-text">${t.text}</div><div class="ti-meta">${t.priority?.toUpperCase()||'MED'} · ${t.source||'local'}</div></div>
+        <div class="badge ${PRI[t.priority||'low']||PRI.low} ti-pri">${LAB[t.priority||'low']}</div>
+      </div>`).join('');
+    this.updateTaskCount();
+  },
+
+  toggleTask(id, el) { el.classList.toggle('done'); this.updateTaskCount(); },
+
+  updateTaskCount() {
+    const all=document.querySelectorAll('.ti').length;
+    const done=document.querySelectorAll('.ti.done').length;
+    const left=all-done;
+    $('task-badge').textContent=`${left} left`;
+  },
+
+  async init() {
+    setGauge('g-cpu',0); setGauge('g-ram',0); setGauge('g-temp',0);
+    await Promise.all([this.loadSystem(), this.loadGitHub(), this.loadWeather(), this.loadTasks()]);
+    // Initial gauge display
+    setTimeout(()=>{ setGauge('g-cpu',this._cpu); setGauge('g-ram',this._ram); setGauge('g-temp',(this._temp/80)*100); },100);
+    setInterval(()=>this.loadSystem(), 3000);
+  }
+};
+
+// ═══════════════════════════════════════════════════
+// N8N MODULE
+// ═══════════════════════════════════════════════════
+const N8N = {
+  apps: [
+    {id:1,name:'Discord Notifier',icon:'💬',cat:'Notifications',accent:'blue',status:'running',desc:'Posts Pi CPU/temp alerts to a Discord channel when thresholds are exceeded.',url:'http://localhost:5678/webhook/discord',trigger:'Event-based',runs:1842,maxRuns:2000,lastRun:'2 min ago'},
+    {id:2,name:'GitHub PR Watcher',icon:'🐙',cat:'DevOps',accent:'green',status:'running',desc:'Polls GitHub API every 5 min, sends Telegram notification on new PRs or CI failures.',url:'http://localhost:5678/webhook/gh-pr',trigger:'Schedule (Cron)',runs:3201,maxRuns:4000,lastRun:'5 min ago'},
+    {id:3,name:'Home Assistant Bridge',icon:'🏠',cat:'IoT / Smart Home',accent:'orange',status:'running',desc:'Syncs Pi uptime, CPU, and temperature to Home Assistant via MQTT every minute.',url:'http://192.168.1.100:8123/api/webhook/pi',trigger:'MQTT',runs:8900,maxRuns:10000,lastRun:'1 min ago'},
+    {id:4,name:'RSS Tech Digest',icon:'📰',cat:'Data & Analytics',accent:'purple',status:'paused',desc:'Fetches HackerNews + Dev.to top posts daily and emails a curated digest at 8am.',url:'',trigger:'Schedule (Cron)',runs:142,maxRuns:200,lastRun:'Yesterday'},
+    {id:5,name:'Nightly Backup',icon:'💾',cat:'DevOps',accent:'red',status:'running',desc:'Backs up Pi config files and n8n workflows to a GitHub Gist every night at 2 AM.',url:'',trigger:'Schedule (Cron)',runs:28,maxRuns:30,lastRun:'Last night'},
+    {id:6,name:'Uptime Monitor',icon:'📡',cat:'Monitoring',accent:'cyan',status:'running',desc:'Pings dashboard + n8n every 60 seconds. Logs downtime to Google Sheets. Alerts via Slack.',url:'http://localhost:5678/webhook/uptime',trigger:'Schedule (Cron)',runs:4200,maxRuns:5000,lastRun:'30 sec ago'},
+  ],
+
+  logs: [],
+  _logInterval: null,
+
+  TEMPLATES: [
+    {name:'Discord Alert',icon:'💬',cat:'Notifications',accent:'blue',trigger:'Event-based',desc:'Send Pi alerts to a Discord channel.'},
+    {name:'GitHub Watcher',icon:'🐙',cat:'DevOps',accent:'green',trigger:'Schedule (Cron)',desc:'Monitor GitHub PRs and CI status.'},
+    {name:'Home Assistant',icon:'🏠',cat:'IoT / Smart Home',accent:'orange',trigger:'MQTT',desc:'Bridge Pi data to Home Assistant.'},
+    {name:'Telegram Bot',icon:'✈️',cat:'Notifications',accent:'blue',trigger:'Webhook',desc:'Send alerts via Telegram.'},
+    {name:'RSS Digest',icon:'📰',cat:'Data & Analytics',accent:'purple',trigger:'Schedule (Cron)',desc:'Daily email of tech news.'},
+    {name:'Pi-hole Stats',icon:'🛡️',cat:'Monitoring',accent:'red',trigger:'Schedule (Cron)',desc:'Pull Pi-hole stats to dashboard.'},
+    {name:'Uptime Monitor',icon:'📡',cat:'Monitoring',accent:'cyan',trigger:'Schedule (Cron)',desc:'Ping services, alert on downtime.'},
+    {name:'Backup to Gist',icon:'💾',cat:'DevOps',accent:'red',trigger:'Schedule (Cron)',desc:'Nightly backup to GitHub Gist.'},
+  ],
+
+  ACCENT_MAP:{blue:'acc-blue aicon-blue',green:'acc-green aicon-green',red:'acc-red aicon-red',orange:'acc-orange aicon-orange',purple:'acc-purple aicon-purple',cyan:'acc-cyan aicon-cyan'},
+  STATUS_HTML:{running:'<div class="app-status s-run">● Running</div>',stopped:'<div class="app-status s-stop">● Stopped</div>',paused:'<div class="app-status s-pause">● Paused</div>'},
+  RUN_COLOR:{blue:'var(--blue)',green:'var(--green)',red:'var(--red)',orange:'var(--orange)',purple:'var(--purple)',cyan:'var(--cyan)'},
+
+  render(filterText='', filterStatus='') {
+    const active=this.apps.filter(a=>a.status==='running').length;
+    const runs=this.apps.reduce((s,a)=>s+a.runs,0);
+    $('n8n-active').textContent=active;
+    $('n8n-runs').textContent=runs.toLocaleString();
+    $('n8n-success').textContent='97.4%';
+    $('app-count').textContent=this.apps.length+' apps';
+
+    const ft=filterText.toLowerCase(), fs=filterStatus;
+    const visible=this.apps.filter(a=>{
+      const matchText=!ft||a.name.toLowerCase().includes(ft)||a.desc.toLowerCase().includes(ft)||a.cat.toLowerCase().includes(ft);
+      const matchStatus=!fs||a.status===fs;
+      return matchText&&matchStatus;
+    });
+
+    $('apps-grid').innerHTML=visible.map(app=>{
+      const [accCls,iconCls]=(this.ACCENT_MAP[app.accent]||'acc-blue aicon-blue').split(' ');
+      const pct=Math.min(100,Math.round(app.runs/app.maxRuns*100));
+      return `<div class="app-card ${accCls} ${app.status==='running'?'running':''}" id="acard-${app.id}">
+        <div class="app-top">
+          <div class="app-icon-row">
+            <div class="app-icon ${iconCls}">${app.icon}</div>
+            <div><div class="app-name">${app.name}</div><div class="app-cat">${app.cat}</div></div>
+          </div>
+          ${this.STATUS_HTML[app.status]||this.STATUS_HTML.stopped}
+        </div>
+        <div class="app-desc">${app.desc}</div>
+        <div class="app-meta">
+          <span>⚡ ${app.trigger}</span>
+          <span>🕐 ${app.lastRun}</span>
+          ${app.url?`<span style="color:var(--blue);cursor:pointer" onclick="window.open('${app.url}','_blank')">🔗 Webhook</span>`:''}
+        </div>
+        <div class="runs-bar">
+          <div class="runs-labels"><span class="runs-text">EXECUTIONS</span><span class="runs-count">${app.runs.toLocaleString()} / ${app.maxRuns.toLocaleString()}</span></div>
+          <div class="runs-track"><div class="runs-fill" style="width:${pct}%;background:${this.RUN_COLOR[app.accent]}"></div></div>
+        </div>
+        <div class="app-actions">
+          ${app.status==='running'
+            ?`<button class="app-btn d" onclick="N8N.toggle(${app.id})">⏸ Pause</button>`
+            :`<button class="app-btn p" onclick="N8N.toggle(${app.id})">▶ Start</button>`}
+          <button class="app-btn" onclick="N8N.openUI()">⚡ Editor</button>
+          <button class="app-btn d" onclick="N8N.del(${app.id})">🗑</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    this.renderQuickTemplates();
+    this.startLogFeed();
+  },
+
+  renderQuickTemplates() {
+    $('quick-templates').innerHTML=this.TEMPLATES.map(t=>`
+      <div class="quick-btn" onclick="N8N.quickAdd('${t.name.replace(/'/g,"\\'")}')">
+        <span class="quick-icon">${t.icon}</span>
+        <div><div class="quick-name">${t.name}</div><div class="quick-desc">${t.desc}</div></div>
+      </div>`).join('');
+    // Modal chips
+    const chips=$('modal-tpl-chips');
+    if(chips) chips.innerHTML=this.TEMPLATES.map(t=>`<div class="tpl-chip" onclick="N8N.fillTemplate('${t.name.replace(/'/g,"\\'")}')">  ${t.icon} ${t.name}</div>`).join('');
+  },
+
+  quickAdd(name) {
+    const t=this.TEMPLATES.find(x=>x.name===name); if(!t) return;
+    N8N.fillModal(t);
+    this.openAddModal();
+  },
+
+  fillTemplate(name) {
+    const t=this.TEMPLATES.find(x=>x.name===name); if(!t) return;
+    this.fillModal(t);
+  },
+
+  fillModal(t) {
+    $('f-name').value=t.name; $('f-icon').value=t.icon; $('f-desc').value=t.desc;
+    const catSel=$('f-cat'); for(let o of catSel.options){if(o.text===t.cat){catSel.value=o.value;break;}}
+    const trigSel=$('f-trigger'); for(let o of trigSel.options){if(o.text===t.trigger){trigSel.value=o.value;break;}}
+    const accSel=$('f-accent'); if(t.accent){for(let o of accSel.options){if(o.value===t.accent){accSel.value=o.value;break;}}}
+  },
+
+  toggle(id) {
+    const app=this.apps.find(a=>a.id===id); if(!app) return;
+    app.status=app.status==='running'?'paused':'running';
+    this.addLog(app.name, app.status==='running'?'Started':'Paused', app.status==='running');
+    this.render($('n8n-search').value, $('n8n-filter').value);
+    toast(app.status==='running'?`▶ ${app.name} started`:`⏸ ${app.name} paused`, app.status==='running'?'▶':'⏸');
+  },
+
+  del(id) {
+    if(!confirm('Remove this workflow from the dashboard?')) return;
+    const app=this.apps.find(a=>a.id===id);
+    this.apps=this.apps.filter(a=>a.id!==id);
+    this.addLog(app?.name||'Workflow','Removed',false);
+    this.render($('n8n-search').value, $('n8n-filter').value);
+    toast('Workflow removed','🗑');
+  },
+
+  filter(v) {
+    this.render($('n8n-search').value, $('n8n-filter').value);
+  },
+
+  openUI() { window.open(CFG.n8nUrl,'_blank'); },
+
+  openAddModal() {
+    $('add-modal').classList.add('open');
+    this.renderQuickTemplates();
+  },
+
+  closeModal() { $('add-modal').classList.remove('open'); },
+
+  addApp() {
+    const name=$('f-name').value.trim();
+    if(!name){toast('Please enter a name','⚠️',2000);return;}
+    const app={
+      id:Date.now(), name, icon:$('f-icon').value.trim()||'⚡',
+      cat:$('f-cat').value, accent:$('f-accent').value,
+      status:$('f-status').value, desc:$('f-desc').value.trim()||'Custom n8n workflow.',
+      url:$('f-url').value.trim(), trigger:$('f-trigger').value,
+      runs:0, maxRuns:1000, lastRun:'Just now'
+    };
+    this.apps.push(app);
+    this.closeModal();
+    this.addLog(app.name,'Added',true);
+    this.render();
+    toast(`⚡ ${app.name} added!`,'✅');
+    // Clear form
+    ['f-name','f-icon','f-url','f-desc'].forEach(id=>$(id).value='');
+  },
+
+  addLog(app, msg, ok) {
+    const now=new Date();
+    this.logs.unshift({time:`${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`,app,msg,ok});
+    if(this.logs.length>20) this.logs.pop();
+    this.renderLog();
+  },
+
+  renderLog() {
+    const el=$('log-list'); if(!el) return;
+    el.innerHTML=this.logs.map(l=>`
+      <div class="log-item">
+        <span class="log-time">${l.time}</span>
+        <span class="log-app">${l.app}</span>
+        <span class="log-msg">${l.msg}</span>
+        <span class="${l.ok?'log-ok':'log-err'}">${l.ok?'✓':'✗'}</span>
+      </div>`).join('');
+  },
+
+  startLogFeed() {
+    if(this._logInterval) clearInterval(this._logInterval);
+    const msgs=['Executed successfully','Webhook received','Scheduled run complete','Data fetched from API','Message sent','Health check passed','Retry succeeded'];
+    this._logInterval=setInterval(()=>{
+      if(!$('page-n8n').classList.contains('active')) return;
+      const running=this.apps.filter(a=>a.status==='running');
+      if(!running.length) return;
+      const app=running[Math.floor(Math.random()*running.length)];
+      app.runs++;
+      this.addLog(app.name,msgs[Math.floor(Math.random()*msgs.length)],Math.random()>.1);
+      $(`n8n-runs`).textContent=this.apps.reduce((s,a)=>s+a.runs,0).toLocaleString();
+    },4500);
+  }
+};
+
+// ═══════════════════════════════════════════════════
+// TERMINAL (simulated)
+// ═══════════════════════════════════════════════════
+const Term = {
+  _history: [], _hIdx: 0, _inited: false,
+
+  RESPONSES: {
+    'help':        ()=>[`[info]Available commands: htop, df -h, free -h, uptime, uname -a, ip addr show, docker ps, pm2 list, vcgencmd measure_temp, cat /proc/cpuinfo | grep Model, hostname -I, neofetch, ls, clear`],
+    'uptime':      ()=>[`[out] ${Math.floor(Math.random()*20)+5}:${pad(Math.floor(Math.random()*60))}:${pad(Math.floor(Math.random()*60))} up ${14} days, 2:17, 1 user, load average: ${(Math.random()*.8).toFixed(2)}, ${(Math.random()*.5).toFixed(2)}, ${(Math.random()*.3).toFixed(2)}`],
+    'uname -a':    ()=>[`[out]Linux raspberrypi 6.6.28+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.6.28-1+rpt1 (2024-04-22) aarch64 GNU/Linux`],
+    'hostname -I': ()=>[`[out]192.168.1.104 fd00::1`],
+    'df -h':       ()=>[`[out]Filesystem      Size  Used Avail Use% Mounted on`, `[out]/dev/root       231G  118G  101G  54% /`, `[out]tmpfs           3.8G  4.0K  3.8G   1% /dev/shm`],
+    'free -h':     ()=>[`[out]               total        used        free      shared`, `[out]Mem:           7.6Gi       4.2Gi       2.1Gi       128Mi`, `[out]Swap:          2.0Gi         0B       2.0Gi`],
+    'vcgencmd measure_temp': ()=>[`[out]temp=${(42+Math.random()*10).toFixed(1)}'C`],
+    'docker ps':   ()=>[`[out]CONTAINER ID   IMAGE             COMMAND          STATUS          PORTS           NAMES`, `[out]a1b2c3d4e5f6   n8nio/n8n         "tini -- n8n..."  Up 14 days      0.0.0.0:5678->5678/tcp   n8n`],
+    'pm2 list':    ()=>[`[ok]┌──────────┬─────────────────┬─────────┬─────────┬──────────┬──────────┐`,`[ok]│ id       │ name            │ status  │ restart │ uptime   │ cpu mem  │`,`[ok]├──────────┼─────────────────┼─────────┼─────────┼──────────┼──────────┤`,`[ok]│ 0        │ pi-dashboard    │ online  │ 0       │ 14d      │ 0% 58.2mb│`,`[ok]└──────────┴─────────────────┴─────────┴─────────┴──────────┴──────────┘`],
+    'ip addr show':()=>[`[out]1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536`,`[out]2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP>`,`[out]   inet 192.168.1.104/24 brd 192.168.1.255 scope global eth0`,`[out]3: wlan0: <BROADCAST,MULTICAST,UP,LOWER_UP>`],
+    'htop':        ()=>[`[warn]htop is an interactive tool — open a real SSH session to use it.`, `[info]Try: ssh pi@raspberrypi.local — then run htop`],
+    'cat /proc/cpuinfo | grep Model': ()=>[`[out]Model		: Raspberry Pi 5 Model B Rev 1.0`],
+    'neofetch':    ()=>[`[out]       .##########.`,`[out]      ##############  pi@raspberrypi`,`[out]      #     ####  ##  ─────────────`,`[out]      ## ## ####### OS: Raspberry Pi OS 64-bit`,`[out]      ## ## ## ####  Host: Raspberry Pi 5 Model B`,`[out]       ####   ####   Kernel: 6.6.28 aarch64`,`[out]                     Shell: bash 5.2.21`,`[out]                     CPU: ARM Cortex-A76 (4) @ 2.4GHz`,`[out]                     Memory: 4326MiB / 7813MiB`],
+    'ls':          ()=>[`[out]pi-dashboard/  n8n-data/  .config/  .ssh/  .bashrc  .profile`],
+    'clear':       ()=>null,
+    'whoami':      ()=>[`[out]pi`],
+    'pwd':         ()=>[`[out]/home/pi`],
+  },
+
+  init() {
+    if (this._inited) return;
+    this._inited=true;
+    this.print('info',`Pi5 Command Center — Simulated Terminal`);
+    this.print('info',`Type 'help' for available commands. For real terminal access: ssh pi@raspberrypi.local`);
+    this.print('out','');
+    const inp=$('term-input');
+    inp.addEventListener('keydown',e=>{
+      if(e.key==='Enter'){this.exec(inp.value.trim());inp.value='';}
+      else if(e.key==='ArrowUp'){e.preventDefault();this.histNav(-1);}
+      else if(e.key==='ArrowDown'){e.preventDefault();this.histNav(1);}
+    });
+    inp.focus();
+  },
+
+  histNav(d) {
+    const inp=$('term-input');
+    this._hIdx=Math.max(0,Math.min(this._history.length,this._hIdx+d));
+    inp.value=this._history[this._history.length-1-this._hIdx]||'';
+  },
+
+  print(type, text) {
+    const out=$('term-output');
+    const line=document.createElement('p');
+    line.className='term-line';
+    const cls={prompt:'tl-prompt',out:'tl-out',err:'tl-err',ok:'tl-ok',info:'tl-info',warn:'tl-warn'}[type]||'tl-out';
+    line.innerHTML=`<span class="${cls}">${text.replace(/</g,'&lt;')}</span>`;
+    out.appendChild(line);
+    out.scrollTop=out.scrollHeight;
+  },
+
+  exec(cmd) {
+    if(!cmd) return;
+    this._history.push(cmd); this._hIdx=0;
+    this.print('prompt',`pi@raspberrypi:~$ ${cmd}`);
+    if(cmd==='clear'){$('term-output').innerHTML='';return;}
+    const handler=this.RESPONSES[cmd];
+    if(handler){
+      const lines=handler();
+      if(lines) lines.forEach(l=>{
+        const type=l.startsWith('[err]')?'err':l.startsWith('[ok]')?'ok':l.startsWith('[info]')?'info':l.startsWith('[warn]')?'warn':'out';
+        this.print(type,l.replace(/^\[.*?\]/,''));
+      });
+    } else {
+      this.print('err',`bash: ${cmd}: command not found (this is a simulated terminal)`);
+      this.print('info',`Tip: type 'help' to see available commands`);
+    }
+  },
+
+  run(cmd) { $('term-input').value=''; this.exec(cmd); $('term-output').scrollTop=$('term-output').scrollHeight; },
+  clear() { $('term-output').innerHTML=''; }
+};
+
+// ═══════════════════════════════════════════════════
+// GUIDE
+// ═══════════════════════════════════════════════════
+const Guide = {
+  show(id, el) {
+    document.querySelectorAll('.guide-section').forEach(s=>s.classList.remove('active'));
+    document.querySelectorAll('.gnav-item').forEach(i=>i.classList.remove('active'));
+    $('gs-'+id).classList.add('active');
+    el.classList.add('active');
+  }
+};
+
+// ═══════════════════════════════════════════════════
+// SETTINGS (stub — extend to save to localStorage)
+// ═══════════════════════════════════════════════════
+const Settings = {
+  open() { toast('Settings: edit CFG object in index.html or set environment variables in .env','⚙️',4000); }
+};
+
+// ═══════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════
+(async function boot() {
+  Clock.init();
+  await Dashboard.init();
+  N8N.render();
+  // Initial log entries
+  N8N.addLog('Home Assistant Bridge','Scheduled run complete',true);
+  N8N.addLog('GitHub PR Watcher','No new PRs found',true);
+  N8N.addLog('Uptime Monitor','All services healthy',true);
+})();
+</script>
+</body>
+</html>

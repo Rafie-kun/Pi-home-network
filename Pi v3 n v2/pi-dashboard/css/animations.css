@@ -1,0 +1,288 @@
+/* ============================================================
+   Pi5 Dashboard — Animations & Keyframes
+   ============================================================ */
+
+/* Loading */
+@keyframes loadingPulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 20px rgba(13, 89, 242, 0.4);
+        transform: scale(1);
+    }
+
+    50% {
+        box-shadow: 0 0 40px rgba(13, 89, 242, 0.7);
+        transform: scale(1.05);
+    }
+}
+
+@keyframes loadingProgress {
+    0% {
+        width: 0%;
+    }
+
+    30% {
+        width: 40%;
+    }
+
+    60% {
+        width: 70%;
+    }
+
+    85% {
+        width: 90%;
+    }
+
+    100% {
+        width: 100%;
+    }
+}
+
+/* Background blobs */
+@keyframes blobFloat {
+
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    33% {
+        transform: translate(30px, -20px) scale(1.05);
+    }
+
+    66% {
+        transform: translate(-20px, 15px) scale(0.95);
+    }
+}
+
+/* Clock colon  */
+@keyframes colonBlink {
+
+    0%,
+    49% {
+        opacity: 1;
+    }
+
+    50%,
+    100% {
+        opacity: 0.2;
+    }
+}
+
+/* Status dot pulse */
+@keyframes pulseGlow {
+
+    0%,
+    100% {
+        opacity: 1;
+        box-shadow: 0 0 0 0 rgba(57, 255, 20, 0.4);
+    }
+
+    50% {
+        opacity: 0.7;
+        box-shadow: 0 0 0 6px rgba(57, 255, 20, 0);
+    }
+}
+
+/* Shimmer */
+@keyframes shimmerAnim {
+    0% {
+        background-position: -400% 0;
+    }
+
+    100% {
+        background-position: 400% 0;
+    }
+}
+
+/* Modal */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Toast */
+@keyframes toastIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes toastOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* Task slide-in */
+@keyframes slideIn {
+    from {
+        transform: translateX(-10px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Log entry */
+@keyframes logAppear {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Spin for loading */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Widget fade in */
+@keyframes widgetFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Gauge glow pulse */
+@keyframes gaugeGlow {
+
+    0%,
+    100% {
+        filter: drop-shadow(0 0 4px rgba(13, 89, 242, 0.3));
+    }
+
+    50% {
+        filter: drop-shadow(0 0 10px rgba(13, 89, 242, 0.6));
+    }
+}
+
+/* n8n active pulse */
+@keyframes n8nPulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 8px rgba(249, 115, 22, 0.3);
+    }
+
+    50% {
+        box-shadow: 0 0 20px rgba(249, 115, 22, 0.6);
+    }
+}
+
+/* Page load stagger animations */
+.widget {
+    animation: widgetFadeIn 0.5s ease both;
+}
+
+.widget:nth-child(1) {
+    animation-delay: 0.05s;
+}
+
+.widget:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.widget:nth-child(3) {
+    animation-delay: 0.15s;
+}
+
+.widget:nth-child(4) {
+    animation-delay: 0.2s;
+}
+
+.widget:nth-child(5) {
+    animation-delay: 0.25s;
+}
+
+.widget:nth-child(6) {
+    animation-delay: 0.3s;
+}
+
+.widget:nth-child(7) {
+    animation-delay: 0.35s;
+}
+
+.widget:nth-child(8) {
+    animation-delay: 0.4s;
+}
+
+.widget:nth-child(9) {
+    animation-delay: 0.45s;
+}
+
+.widget:nth-child(10) {
+    animation-delay: 0.5s;
+}
+
+/* Active workflow animation */
+.n8n-workflow-card.active-card {
+    animation: n8nPulse 2s ease-in-out infinite;
+}
+
+/* Number counter animation */
+@keyframes countUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.count-animate {
+    animation: countUp 0.4s ease both;
+}
